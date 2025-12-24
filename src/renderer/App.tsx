@@ -217,6 +217,20 @@ export default function App() {
     setRepositories(repos);
   }, []);
 
+  // Remove repository from workspace
+  const handleRemoveRepository = useCallback(
+    (repoPath: string) => {
+      const updated = repositories.filter((r) => r.path !== repoPath);
+      saveRepositories(updated);
+      // Clear selection if removed repo was selected
+      if (selectedRepo === repoPath) {
+        setSelectedRepo(null);
+        setActiveWorktree(null);
+      }
+    },
+    [repositories, saveRepositories, selectedRepo]
+  );
+
   // Save selected repo to localStorage
   useEffect(() => {
     if (selectedRepo) {
@@ -339,6 +353,7 @@ export default function App() {
               selectedRepo={selectedRepo}
               onSelectRepo={handleSelectRepo}
               onAddRepository={handleAddRepository}
+              onRemoveRepository={handleRemoveRepository}
               onOpenSettings={() => setSettingsOpen(true)}
               collapsed={false}
               onCollapse={() => setWorkspaceCollapsed(true)}

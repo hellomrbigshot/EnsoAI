@@ -1,12 +1,28 @@
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { FolderGit2, PanelLeftClose, Plus, Search, Settings } from 'lucide-react';
+import { FolderGit2, FolderMinus, PanelLeftClose, Plus, Search, Settings } from 'lucide-react';
 import { useState } from 'react';
 
+interface Repository {
+  name: string;
+  path: string;
+}
+
 interface WorkspaceSidebarProps {
-  repositories: Array<{ name: string; path: string }>;
+  repositories: Repository[];
   selectedRepo: string | null;
   onSelectRepo: (repoPath: string) => void;
   onAddRepository: () => void;
+  onRemoveRepository?: (repoPath: string) => void;
   onOpenSettings?: () => void;
   collapsed?: boolean;
   onCollapse?: () => void;
@@ -17,11 +33,37 @@ export function WorkspaceSidebar({
   selectedRepo,
   onSelectRepo,
   onAddRepository,
+  onRemoveRepository,
   onOpenSettings,
   collapsed: _collapsed = false,
   onCollapse,
 }: WorkspaceSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [menuRepo, setMenuRepo] = useState<Repository | null>(null);
+  const [repoToRemove, setRepoToRemove] = useState<Repository | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, repo: Repository) => {
+    e.preventDefault();
+    setMenuPosition({ x: e.clientX, y: e.clientY });
+    setMenuRepo(repo);
+    setMenuOpen(true);
+  };
+
+  const handleRemoveClick = () => {
+    if (menuRepo) {
+      setRepoToRemove(menuRepo);
+    }
+    setMenuOpen(false);
+  };
+
+  const handleConfirmRemove = () => {
+    if (repoToRemove && onRemoveRepository) {
+      onRemoveRepository(repoToRemove.path);
+    }
+    setRepoToRemove(null);
+  };
 
   const filteredRepos = repositories.filter((repo) =>
     repo.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -70,6 +112,7 @@ export function WorkspaceSidebar({
                 type="button"
                 key={repo.path}
                 onClick={() => onSelectRepo(repo.path)}
+                onContextMenu={(e) => handleContextMenu(e, repo)}
                 className={cn(
                   'flex w-full flex-col items-start gap-1 rounded-lg p-3 text-left transition-colors',
                   selectedRepo === repo.path
@@ -126,6 +169,63 @@ export function WorkspaceSidebar({
           </button>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {menuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50"
+            onClick={() => setMenuOpen(false)}
+            onKeyDown={(e) => e.key === 'Escape' && setMenuOpen(false)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setMenuOpen(false);
+            }}
+            role="presentation"
+          />
+          <div
+            className="fixed z-50 min-w-32 rounded-lg border bg-popover p-1 shadow-lg"
+            style={{ left: menuPosition.x, top: menuPosition.y }}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-accent"
+              onClick={handleRemoveClick}
+            >
+              <FolderMinus className="h-4 w-4" />
+              移除仓库
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Remove confirmation dialog */}
+      <AlertDialog
+        open={!!repoToRemove}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRepoToRemove(null);
+          }
+        }}
+      >
+        <AlertDialogPopup>
+          <AlertDialogHeader>
+            <AlertDialogTitle>移除仓库</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要从工作区移除 <strong>{repoToRemove?.name}</strong> 吗？
+              <span className="block mt-2 text-muted-foreground">
+                此操作只会从应用中移除，不会删除本地文件。
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogClose render={<Button variant="outline">取消</Button>} />
+            <Button variant="destructive" onClick={handleConfirmRemove}>
+              移除
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogPopup>
+      </AlertDialog>
     </aside>
   );
 }
