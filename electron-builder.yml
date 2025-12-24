@@ -86,6 +86,6 @@ linux:
 
 publish:
   provider: github
-  owner: your-org
-  repo: enso-ai
+  owner: J3n5en
+  repo: EnsoAI
   releaseType: release
