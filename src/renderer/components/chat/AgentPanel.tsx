@@ -8,6 +8,7 @@ interface AgentPanelProps {
   repoPath: string; // repository path (workspace identifier)
   cwd: string; // current worktree path
   isActive?: boolean;
+  onSwitchWorktree?: (worktreePath: string) => void;
 }
 
 const SESSIONS_STORAGE_PREFIX = 'enso-chat-sessions:';
@@ -109,7 +110,7 @@ function saveSessions(
   );
 }
 
-export function AgentPanel({ repoPath, cwd, isActive = false }: AgentPanelProps) {
+export function AgentPanel({ repoPath, cwd, isActive = false, onSwitchWorktree }: AgentPanelProps) {
   const { agentSettings, customAgents, agentKeybindings } = useSettingsStore();
   const defaultAgentId = useMemo(() => getDefaultAgentId(agentSettings), [agentSettings]);
 
@@ -210,13 +211,17 @@ export function AgentPanel({ repoPath, cwd, isActive = false }: AgentPanelProps)
     });
   }, []);
 
-  // 监听通知点击，激活对应 session
+  // 监听通知点击，激活对应 session 并切换 worktree
   useEffect(() => {
     const unsubscribe = window.electronAPI.notification.onClick((sessionId) => {
+      const session = state.sessions.find((s) => s.id === sessionId);
+      if (session && session.cwd !== cwd && onSwitchWorktree) {
+        onSwitchWorktree(session.cwd);
+      }
       handleSelectSession(sessionId);
     });
     return unsubscribe;
-  }, [handleSelectSession]);
+  }, [handleSelectSession, state.sessions, cwd, onSwitchWorktree]);
 
   const handleNextSession = useCallback(() => {
     setState((prev) => {

@@ -20,13 +20,13 @@ type TabId = 'chat' | 'file' | 'terminal' | 'source-control';
 interface MainContentProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
-  workspaceName?: string;
   repoPath?: string; // repository path for session storage
   worktreePath?: string;
-  workspaceCollapsed?: boolean;
+  repositoryCollapsed?: boolean;
   worktreeCollapsed?: boolean;
-  onExpandWorkspace?: () => void;
+  onExpandRepository?: () => void;
   onExpandWorktree?: () => void;
+  onSwitchWorktree?: (worktreePath: string) => void;
 }
 
 const tabs: Array<{ id: TabId; icon: React.ElementType; label: string }> = [
@@ -39,17 +39,17 @@ const tabs: Array<{ id: TabId; icon: React.ElementType; label: string }> = [
 export function MainContent({
   activeTab,
   onTabChange,
-  workspaceName: _workspaceName,
   repoPath,
   worktreePath,
-  workspaceCollapsed = false,
+  repositoryCollapsed = false,
   worktreeCollapsed = false,
-  onExpandWorkspace,
+  onExpandRepository,
   onExpandWorktree,
+  onSwitchWorktree,
 }: MainContentProps) {
   // Need extra padding for traffic lights when both panels are collapsed (macOS only)
   const isMac = window.electronAPI.env.platform === 'darwin';
-  const needsTrafficLightPadding = isMac && workspaceCollapsed && worktreeCollapsed;
+  const needsTrafficLightPadding = isMac && repositoryCollapsed && worktreeCollapsed;
 
   return (
     <main className="flex min-w-[535px] flex-1 flex-col overflow-hidden bg-background">
@@ -75,13 +75,13 @@ export function MainContent({
               >
                 {/* Left separator */}
                 {needsTrafficLightPadding && <div className="mx-1 h-4 w-px bg-border" />}
-                {/* Workspace expand button - shown when both panels are collapsed */}
-                {workspaceCollapsed && onExpandWorkspace && (
+                {/* Repository expand button - shown when both panels are collapsed */}
+                {repositoryCollapsed && onExpandRepository && (
                   <button
                     type="button"
-                    onClick={onExpandWorkspace}
+                    onClick={onExpandRepository}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
-                    title="展开 Workspace"
+                    title="展开 Repository"
                   >
                     <FolderOpen className="h-4 w-4" />
                   </button>
@@ -136,7 +136,12 @@ export function MainContent({
           )}
         >
           {repoPath && worktreePath ? (
-            <AgentPanel repoPath={repoPath} cwd={worktreePath} isActive={activeTab === 'chat'} />
+            <AgentPanel
+              repoPath={repoPath}
+              cwd={worktreePath}
+              isActive={activeTab === 'chat'}
+              onSwitchWorktree={onSwitchWorktree}
+            />
           ) : (
             <Empty>
               <EmptyMedia variant="icon">

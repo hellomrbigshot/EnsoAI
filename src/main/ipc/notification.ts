@@ -27,10 +27,8 @@ export function registerNotificationHandlers(): void {
         notification.on('click', () => {
           const window = BrowserWindow.fromWebContents(event.sender);
           if (window && !window.isDestroyed()) {
-            // 激活窗口
             if (window.isMinimized()) window.restore();
             window.focus();
-            // 通知渲染进程切换到对应 session
             window.webContents.send(IPC_CHANNELS.NOTIFICATION_CLICK, options.sessionId);
           }
         });
