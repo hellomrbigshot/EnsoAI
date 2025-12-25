@@ -1,8 +1,8 @@
 import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import type { TerminalCreateOptions } from '@shared/types';
+import type { ShellConfig, TerminalCreateOptions } from '@shared/types';
 import * as pty from 'node-pty';
-import { detectShell } from './ShellDetector';
+import { detectShell, shellDetector } from './ShellDetector';
 
 const isWindows = process.platform === 'win32';
 
@@ -51,11 +51,23 @@ export class PtyManager {
     onExit?: (exitCode: number, signal?: number) => void
   ): string {
     const id = `pty-${++this.counter}`;
-    const shell = options.shell || detectShell();
     const home = process.env.HOME || process.env.USERPROFILE || homedir();
     const cwd = options.cwd || home;
 
-    const args = options.args || [];
+    let shell: string;
+    let args: string[];
+
+    if (options.shell) {
+      shell = options.shell;
+      args = options.args || [];
+    } else if (options.shellConfig) {
+      const resolved = shellDetector.resolveShellConfig(options.shellConfig);
+      shell = resolved.shell;
+      args = resolved.args;
+    } else {
+      shell = detectShell();
+      args = options.args || [];
+    }
 
     const ptyProcess = pty.spawn(shell, args, {
       name: 'xterm-256color',

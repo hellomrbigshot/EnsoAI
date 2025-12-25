@@ -62,8 +62,31 @@ const BUILTIN_AGENT_CONFIGS: BuiltinAgentConfig[] = [
   },
 ];
 
+export interface CliDetectOptions {
+  includeWsl?: boolean;
+}
+
 class CliDetector {
   private cachedStatus: AgentCliStatus | null = null;
+  private wslAvailable: boolean | null = null;
+
+  private async isWslAvailable(): Promise<boolean> {
+    if (this.wslAvailable !== null) {
+      return this.wslAvailable;
+    }
+    if (!isWindows) {
+      this.wslAvailable = false;
+      return false;
+    }
+    try {
+      await execAsync('wsl --status', { timeout: 3000 });
+      this.wslAvailable = true;
+      return true;
+    } catch {
+      this.wslAvailable = false;
+      return false;
+    }
+  }
 
   private getEnhancedPath(): string {
     const home = process.env.HOME || process.env.USERPROFILE || homedir();
@@ -125,6 +148,7 @@ class CliDetector {
         installed: true,
         version,
         isBuiltin: true,
+        environment: 'native',
       };
     } catch {
       return {
@@ -133,6 +157,47 @@ class CliDetector {
         command: config.command,
         installed: false,
         isBuiltin: true,
+      };
+    }
+  }
+
+  async detectBuiltinInWsl(config: BuiltinAgentConfig): Promise<AgentCliInfo> {
+    try {
+      // Use interactive login shell (-il) to load nvm/rbenv/pyenv and other version managers
+      // Use $SHELL to respect user's default shell (bash/zsh/etc)
+      await execAsync(`wsl -- sh -c 'exec $SHELL -ilc "which ${config.command}"'`, {
+        timeout: 8000,
+      });
+      const { stdout } = await execAsync(
+        `wsl -- sh -c 'exec $SHELL -ilc "${config.command} ${config.versionFlag}"'`,
+        {
+          timeout: 8000,
+        }
+      );
+
+      let version: string | undefined;
+      if (config.versionRegex) {
+        const match = stdout.match(config.versionRegex);
+        version = match ? match[1] : undefined;
+      }
+
+      return {
+        id: `${config.id}-wsl`,
+        name: `${config.name} (WSL)`,
+        command: config.command,
+        installed: true,
+        version,
+        isBuiltin: true,
+        environment: 'wsl',
+      };
+    } catch {
+      return {
+        id: `${config.id}-wsl`,
+        name: `${config.name} (WSL)`,
+        command: config.command,
+        installed: false,
+        isBuiltin: true,
+        environment: 'wsl',
       };
     }
   }
@@ -157,6 +222,7 @@ class CliDetector {
         installed: true,
         version,
         isBuiltin: false,
+        environment: 'native',
       };
     } catch {
       return {
@@ -169,7 +235,73 @@ class CliDetector {
     }
   }
 
+  async detectCustomInWsl(agent: CustomAgent): Promise<AgentCliInfo> {
+    try {
+      // Use interactive login shell (-il) to load nvm/rbenv/pyenv and other version managers
+      // Use $SHELL to respect user's default shell (bash/zsh/etc)
+      await execAsync(`wsl -- sh -c 'exec $SHELL -ilc "which ${agent.command}"'`, {
+        timeout: 8000,
+      });
+      const { stdout } = await execAsync(
+        `wsl -- sh -c 'exec $SHELL -ilc "${agent.command} --version"'`,
+        {
+          timeout: 8000,
+        }
+      );
+
+      const match = stdout.match(/(\d+\.\d+\.\d+)/);
+      const version = match ? match[1] : undefined;
+
+      return {
+        id: `${agent.id}-wsl`,
+        name: `${agent.name} (WSL)`,
+        command: agent.command,
+        installed: true,
+        version,
+        isBuiltin: false,
+        environment: 'wsl',
+      };
+    } catch {
+      return {
+        id: `${agent.id}-wsl`,
+        name: `${agent.name} (WSL)`,
+        command: agent.command,
+        installed: false,
+        isBuiltin: false,
+        environment: 'wsl',
+      };
+    }
+  }
+
   async detectOne(agentId: string, customAgent?: CustomAgent): Promise<AgentCliInfo> {
+    // Check if this is a WSL agent (id ends with -wsl)
+    const isWslAgent = agentId.endsWith('-wsl');
+    const baseAgentId = isWslAgent ? agentId.slice(0, -4) : agentId;
+
+    if (isWslAgent) {
+      // Check if WSL is available first
+      if (!(await this.isWslAvailable())) {
+        return {
+          id: agentId,
+          name: `${baseAgentId} (WSL)`,
+          command: baseAgentId,
+          installed: false,
+          isBuiltin: false,
+          environment: 'wsl',
+        };
+      }
+
+      const builtinConfig = BUILTIN_AGENT_CONFIGS.find((c) => c.id === baseAgentId);
+      if (builtinConfig) {
+        return this.detectBuiltinInWsl(builtinConfig);
+      }
+      if (customAgent) {
+        // For WSL custom agent, use the base agent info
+        const baseAgent = { ...customAgent, id: baseAgentId };
+        return this.detectCustomInWsl(baseAgent);
+      }
+    }
+
     const builtinConfig = BUILTIN_AGENT_CONFIGS.find((c) => c.id === agentId);
     if (builtinConfig) {
       return this.detectBuiltin(builtinConfig);
@@ -186,11 +318,24 @@ class CliDetector {
     };
   }
 
-  async detectAll(customAgents: CustomAgent[] = []): Promise<AgentCliStatus> {
+  async detectAll(
+    customAgents: CustomAgent[] = [],
+    options: CliDetectOptions = {}
+  ): Promise<AgentCliStatus> {
     const builtinPromises = BUILTIN_AGENT_CONFIGS.map((config) => this.detectBuiltin(config));
     const customPromises = customAgents.map((agent) => this.detectCustom(agent));
 
-    const agents = await Promise.all([...builtinPromises, ...customPromises]);
+    const promises: Promise<AgentCliInfo>[] = [...builtinPromises, ...customPromises];
+
+    if (options.includeWsl && (await this.isWslAvailable())) {
+      const wslBuiltinPromises = BUILTIN_AGENT_CONFIGS.map((config) =>
+        this.detectBuiltinInWsl(config)
+      );
+      const wslCustomPromises = customAgents.map((agent) => this.detectCustomInWsl(agent));
+      promises.push(...wslBuiltinPromises, ...wslCustomPromises);
+    }
+
+    const agents = await Promise.all(promises);
 
     this.cachedStatus = { agents };
     return this.cachedStatus;

@@ -7,6 +7,7 @@ export interface AgentCliInfo {
   installed: boolean;
   version?: string;
   isBuiltin: boolean;
+  environment?: 'native' | 'wsl';
 }
 
 export interface CustomAgent {

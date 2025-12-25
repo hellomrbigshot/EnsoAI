@@ -6,6 +6,15 @@ import { MainContent } from './components/layout/MainContent';
 import { WorkspaceSidebar } from './components/layout/WorkspaceSidebar';
 import { WorktreePanel } from './components/layout/WorktreePanel';
 import { SettingsDialog } from './components/settings/SettingsDialog';
+import { Button } from './components/ui/button';
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
+} from './components/ui/dialog';
 import { useEditor } from './hooks/useEditor';
 import { useGitBranches, useGitInit } from './hooks/useGit';
 import { useWorktreeCreate, useWorktreeList, useWorktreeRemove } from './hooks/useWorktree';
@@ -83,6 +92,9 @@ export default function App() {
   // Action panel state
   const [actionPanelOpen, setActionPanelOpen] = useState(false);
 
+  // Close confirmation dialog state
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+
   // Resize state
   const [resizing, setResizing] = useState<'workspace' | 'worktree' | null>(null);
   const startXRef = useRef(0);
@@ -131,6 +143,14 @@ export default function App() {
           setActionPanelOpen(true);
           break;
       }
+    });
+    return cleanup;
+  }, []);
+
+  // Listen for close request from main process
+  useEffect(() => {
+    const cleanup = window.electronAPI.app.onCloseRequest(() => {
+      setCloseDialogOpen(true);
     });
     return cleanup;
   }, []);
@@ -581,6 +601,44 @@ export default function App() {
         onToggleWorktree={() => setWorktreeCollapsed((prev) => !prev)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
+
+      {/* Close Confirmation Dialog */}
+      <Dialog
+        open={closeDialogOpen}
+        onOpenChange={(open) => {
+          setCloseDialogOpen(open);
+          if (!open) {
+            window.electronAPI.app.confirmClose(false);
+          }
+        }}
+      >
+        <DialogPopup className="sm:max-w-sm" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>确认退出</DialogTitle>
+            <DialogDescription>确定要退出应用吗？</DialogDescription>
+          </DialogHeader>
+          <DialogFooter variant="bare">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCloseDialogOpen(false);
+                window.electronAPI.app.confirmClose(false);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setCloseDialogOpen(false);
+                window.electronAPI.app.confirmClose(true);
+              }}
+            >
+              退出
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
     </div>
   );
 }

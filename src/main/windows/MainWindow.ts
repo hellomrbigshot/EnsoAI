@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { is } from '@electron-toolkit/utils';
-import { app, BrowserWindow, dialog, shell } from 'electron';
+import { IPC_CHANNELS } from '@shared/types';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 
 interface WindowState {
   width: number;
@@ -78,30 +79,26 @@ export function createMainWindow(): BrowserWindow {
     win.show();
   });
 
-  // Confirm before close
+  // Confirm before close (skip in dev mode)
   let forceClose = false;
+
+  // Listen for close confirmation from renderer
+  ipcMain.on(IPC_CHANNELS.APP_CLOSE_CONFIRM, (event, confirmed: boolean) => {
+    if (event.sender === win.webContents && confirmed) {
+      forceClose = true;
+      win.close();
+    }
+  });
+
   win.on('close', (e) => {
-    if (forceClose) {
+    if (forceClose || is.dev) {
       saveWindowState(win);
       return;
     }
 
     e.preventDefault();
-    dialog
-      .showMessageBox(win, {
-        type: 'question',
-        buttons: ['取消', '退出'],
-        defaultId: 1,
-        cancelId: 0,
-        title: '确认退出',
-        message: '确定要退出应用吗？',
-      })
-      .then(({ response }) => {
-        if (response === 1) {
-          forceClose = true;
-          win.close();
-        }
-      });
+    // Send close request to renderer for custom dialog
+    win.webContents.send(IPC_CHANNELS.APP_CLOSE_REQUEST);
   });
 
   // Open external links in browser

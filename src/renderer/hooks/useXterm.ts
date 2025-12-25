@@ -28,14 +28,6 @@ function hasVisibleContent(data: string): boolean {
   return stripped.trim().length > 0;
 }
 
-function getDefaultCommand(): { shell: string; args: string[] } {
-  const isWindows = window.electronAPI?.env?.platform === 'win32';
-  if (isWindows) {
-    return { shell: 'powershell.exe', args: ['-NoLogo'] };
-  }
-  return { shell: '/bin/zsh', args: ['-i', '-l'] };
-}
-
 export interface UseXtermOptions {
   cwd?: string;
   /** Shell command and args to run */
@@ -105,7 +97,7 @@ function useTerminalSettings() {
 
 export function useXterm({
   cwd,
-  command = getDefaultCommand(),
+  command,
   isActive = true,
   onExit,
   onData,
@@ -115,6 +107,7 @@ export function useXterm({
   const terminalRef = useRef<Terminal | null>(null);
   const settings = useTerminalSettings();
   const terminalRenderer = useSettingsStore((s) => s.terminalRenderer);
+  const shellConfig = useSettingsStore((s) => s.shellConfig);
   const navigateToFile = useNavigationStore((s) => s.navigateToFile);
   const cwdRef = useRef(cwd);
   cwdRef.current = cwd;
@@ -134,8 +127,11 @@ export function useXterm({
   const hasReceivedDataRef = useRef(false);
   // Memoize command key to avoid dependency array issues
   const commandKey = useMemo(
-    () => `${command.shell}:${command.args.join(' ')}`,
-    [command.shell, command.args]
+    () =>
+      command
+        ? `${command.shell}:${command.args.join(' ')}`
+        : `shellConfig:${shellConfig.shellType}`,
+    [command, shellConfig.shellType]
   );
   // rAF write buffer for smooth rendering
   const writeBufferRef = useRef('');
@@ -355,8 +351,9 @@ export function useXterm({
     try {
       const ptyId = await window.electronAPI.terminal.create({
         cwd: cwd || window.electronAPI.env.HOME,
-        shell: command.shell,
-        args: command.args,
+        // If command is provided (e.g., for agent), use shell/args directly
+        // Otherwise, use shellConfig from settings
+        ...(command ? { shell: command.shell, args: command.args } : { shellConfig }),
         cols: terminal.cols,
         rows: terminal.rows,
       });
@@ -422,7 +419,7 @@ export function useXterm({
       terminal.writeln(`\x1b[31mFailed to start terminal.\x1b[0m`);
       terminal.writeln(`\x1b[33mError: ${error}\x1b[0m`);
     }
-  }, [cwd, commandKey, terminalRenderer]);
+  }, [cwd, command, shellConfig, commandKey, terminalRenderer]);
 
   // Lazy initialization: only init when first activated
   useEffect(() => {

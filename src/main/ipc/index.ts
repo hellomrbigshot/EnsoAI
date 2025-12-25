@@ -5,6 +5,7 @@ import { registerDialogHandlers } from './dialog';
 import { registerFileHandlers } from './files';
 import { registerGitHandlers } from './git';
 import { registerSettingsHandlers } from './settings';
+import { registerShellHandlers } from './shell';
 import { registerTerminalHandlers } from './terminal';
 import { registerWorktreeHandlers } from './worktree';
 
@@ -17,5 +18,6 @@ export function registerIpcHandlers(): void {
   registerDialogHandlers();
   registerAppHandlers();
   registerCliHandlers();
+  registerShellHandlers();
   registerSettingsHandlers();
 }

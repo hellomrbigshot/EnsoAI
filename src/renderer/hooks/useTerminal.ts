@@ -1,25 +1,31 @@
 import type { TerminalCreateOptions } from '@shared/types';
 import { useCallback, useEffect } from 'react';
+import { useSettingsStore } from '@/stores/settings';
 import { useTerminalStore } from '@/stores/terminal';
 
 export function useTerminal() {
   const { sessions, activeSessionId, addSession, removeSession, setActiveSession } =
     useTerminalStore();
+  const shellConfig = useSettingsStore((s) => s.shellConfig);
 
   const createTerminal = useCallback(
     async (options?: TerminalCreateOptions) => {
-      const id = await window.electronAPI.terminal.create(options);
+      const createOptions: TerminalCreateOptions = {
+        ...options,
+        shellConfig: options?.shell ? undefined : shellConfig,
+      };
+      const id = await window.electronAPI.terminal.create(createOptions);
       addSession({
         id,
         title: 'Terminal',
         cwd: options?.cwd || process.env.HOME || '/',
-        shell: options?.shell || 'zsh',
+        shell: options?.shell || shellConfig.shellType,
         cols: options?.cols || 80,
         rows: options?.rows || 24,
       });
       return id;
     },
-    [addSession]
+    [addSession, shellConfig]
   );
 
   const destroyTerminal = useCallback(

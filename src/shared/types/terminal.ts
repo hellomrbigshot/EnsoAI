@@ -14,6 +14,7 @@ export interface TerminalCreateOptions {
   cols?: number;
   rows?: number;
   env?: Record<string, string>;
+  shellConfig?: import('./shell').ShellConfig;
 }
 
 export interface TerminalResizeOptions {

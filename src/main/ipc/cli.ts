@@ -1,12 +1,15 @@
 import type { CustomAgent } from '@shared/types';
 import { IPC_CHANNELS } from '@shared/types';
 import { ipcMain } from 'electron';
-import { cliDetector } from '../services/cli/CliDetector';
+import { type CliDetectOptions, cliDetector } from '../services/cli/CliDetector';
 
 export function registerCliHandlers(): void {
-  ipcMain.handle(IPC_CHANNELS.CLI_DETECT, async (_, customAgents?: CustomAgent[]) => {
-    return await cliDetector.detectAll(customAgents);
-  });
+  ipcMain.handle(
+    IPC_CHANNELS.CLI_DETECT,
+    async (_, customAgents?: CustomAgent[], options?: CliDetectOptions) => {
+      return await cliDetector.detectAll(customAgents, options);
+    }
+  );
 
   ipcMain.handle(
     IPC_CHANNELS.CLI_DETECT_ONE,

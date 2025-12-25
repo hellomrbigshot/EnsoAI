@@ -52,6 +52,8 @@ export const IPC_CHANNELS = {
   // App
   APP_GET_PATH: 'app:getPath',
   APP_UPDATE_AVAILABLE: 'app:updateAvailable',
+  APP_CLOSE_REQUEST: 'app:closeRequest',
+  APP_CLOSE_CONFIRM: 'app:closeConfirm',
 
   // Dialog
   DIALOG_OPEN_DIRECTORY: 'dialog:openDirectory',
@@ -68,6 +70,9 @@ export const IPC_CHANNELS = {
   // CLI Detector
   CLI_DETECT: 'cli:detect',
   CLI_DETECT_ONE: 'cli:detectOne',
+
+  // Shell Detector
+  SHELL_DETECT: 'shell:detect',
 
   // Settings
   SETTINGS_READ: 'settings:read',

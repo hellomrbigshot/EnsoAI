@@ -12,6 +12,7 @@ import type {
   GitLogEntry,
   GitStatus,
   GitWorktree,
+  ShellInfo,
   TerminalCreateOptions,
   TerminalResizeOptions,
   WorktreeCreateOptions,
@@ -144,6 +145,14 @@ const electronAPI = {
       ipcRenderer.on(IPC_CHANNELS.APP_UPDATE_AVAILABLE, handler);
       return () => ipcRenderer.off(IPC_CHANNELS.APP_UPDATE_AVAILABLE, handler);
     },
+    onCloseRequest: (callback: () => void): (() => void) => {
+      const handler = () => callback();
+      ipcRenderer.on(IPC_CHANNELS.APP_CLOSE_REQUEST, handler);
+      return () => ipcRenderer.off(IPC_CHANNELS.APP_CLOSE_REQUEST, handler);
+    },
+    confirmClose: (confirmed: boolean): void => {
+      ipcRenderer.send(IPC_CHANNELS.APP_CLOSE_CONFIRM, confirmed);
+    },
   },
 
   // Dialog
@@ -178,8 +187,11 @@ const electronAPI = {
 
   // CLI Detector
   cli: {
-    detect: (customAgents?: CustomAgent[]): Promise<AgentCliStatus> =>
-      ipcRenderer.invoke(IPC_CHANNELS.CLI_DETECT, customAgents),
+    detect: (
+      customAgents?: CustomAgent[],
+      options?: { includeWsl?: boolean }
+    ): Promise<AgentCliStatus> =>
+      ipcRenderer.invoke(IPC_CHANNELS.CLI_DETECT, customAgents, options),
     detectOne: (agentId: string, customAgent?: CustomAgent): Promise<AgentCliInfo> =>
       ipcRenderer.invoke(IPC_CHANNELS.CLI_DETECT_ONE, agentId, customAgent),
   },
@@ -199,6 +211,7 @@ const electronAPI = {
 
   // Shell
   shell: {
+    detect: (): Promise<ShellInfo[]> => ipcRenderer.invoke(IPC_CHANNELS.SHELL_DETECT),
     openExternal: (url: string): Promise<void> => shell.openExternal(url),
   },
 

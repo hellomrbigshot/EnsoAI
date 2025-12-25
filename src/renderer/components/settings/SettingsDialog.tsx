@@ -1,4 +1,4 @@
-import type { AgentCliInfo, BuiltinAgentId, CustomAgent } from '@shared/types';
+import type { AgentCliInfo, BuiltinAgentId, CustomAgent, ShellInfo } from '@shared/types';
 import {
   Bot,
   ChevronLeft,
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { useKeybindingInterceptor } from '@/hooks/useKeybindingInterceptor';
 import {
   defaultDarkTheme,
   getThemeNames,
@@ -67,12 +68,32 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogProps) {
   const [activeCategory, setActiveCategory] = React.useState<SettingsCategory>('general');
+  const [internalOpen, setInternalOpen] = React.useState(false);
 
   // Controlled mode (open prop provided) doesn't need trigger
   const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
+
+  const handleOpenChange = React.useCallback(
+    (newOpen: boolean) => {
+      if (isControlled) {
+        onOpenChange?.(newOpen);
+      } else {
+        setInternalOpen(newOpen);
+      }
+    },
+    [isControlled, onOpenChange]
+  );
+
+  const handleClose = React.useCallback(() => {
+    handleOpenChange(false);
+  }, [handleOpenChange]);
+
+  // Intercept close tab keybinding when dialog is open
+  useKeybindingInterceptor(isOpen, 'closeTab', handleClose);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {!isControlled && (
         <DialogTrigger
           render={
@@ -137,8 +158,30 @@ const scrollbackOptions = [
 ];
 
 function GeneralSettings() {
-  const { terminalRenderer, setTerminalRenderer, terminalScrollback, setTerminalScrollback } =
-    useSettingsStore();
+  const {
+    terminalRenderer,
+    setTerminalRenderer,
+    terminalScrollback,
+    setTerminalScrollback,
+    shellConfig,
+    setShellConfig,
+    wslEnabled,
+    setWslEnabled,
+  } = useSettingsStore();
+
+  const [shells, setShells] = React.useState<ShellInfo[]>([]);
+  const [loadingShells, setLoadingShells] = React.useState(true);
+  const isWindows = window.electronAPI?.env.platform === 'win32';
+
+  React.useEffect(() => {
+    window.electronAPI.shell.detect().then((detected) => {
+      setShells(detected);
+      setLoadingShells(false);
+    });
+  }, []);
+
+  const availableShells = shells.filter((s) => s.available);
+  const currentShell = shells.find((s) => s.id === shellConfig.shellType);
 
   return (
     <div className="space-y-6">
@@ -146,6 +189,53 @@ function GeneralSettings() {
         <h3 className="text-lg font-medium">终端</h3>
         <p className="text-sm text-muted-foreground">终端渲染与性能设置</p>
       </div>
+
+      {/* Shell */}
+      <div className="grid grid-cols-[100px_1fr] items-start gap-4">
+        <span className="text-sm font-medium mt-2">Shell</span>
+        <div className="space-y-1.5">
+          {loadingShells ? (
+            <div className="flex h-10 items-center">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+            </div>
+          ) : (
+            <Select
+              value={shellConfig.shellType}
+              onValueChange={(v) => setShellConfig({ ...shellConfig, shellType: v as never })}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue>{currentShell?.name || shellConfig.shellType}</SelectValue>
+              </SelectTrigger>
+              <SelectPopup>
+                {availableShells.map((shell) => (
+                  <SelectItem key={shell.id} value={shell.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{shell.name}</span>
+                      {shell.isWsl && (
+                        <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-600 dark:text-blue-400">
+                          WSL
+                        </span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          )}
+          <p className="text-xs text-muted-foreground">更改后新建终端生效</p>
+        </div>
+      </div>
+
+      {/* WSL Settings (Windows only) */}
+      {isWindows && (
+        <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+          <span className="text-sm font-medium">WSL 检测</span>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">在 WSL 中检测 Agent CLI</p>
+            <Switch checked={wslEnabled} onCheckedChange={setWslEnabled} />
+          </div>
+        </div>
+      )}
 
       {/* Renderer */}
       <div className="grid grid-cols-[100px_1fr] items-start gap-4">
@@ -648,6 +738,7 @@ function KeybindingInput({
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="button"
+        data-keybinding-recording={isRecording ? '' : undefined}
       >
         {isRecording ? (
           <span className="flex items-center gap-2 text-muted-foreground">
@@ -912,6 +1003,7 @@ function AgentSettings() {
   const {
     agentSettings,
     customAgents,
+    wslEnabled,
     setAgentEnabled,
     setAgentDefault,
     addCustomAgent,
@@ -924,32 +1016,23 @@ function AgentSettings() {
   const [isAddingAgent, setIsAddingAgent] = React.useState(false);
 
   const detectAllAgents = React.useCallback(() => {
-    const allAgentIds = [...BUILTIN_AGENTS, ...customAgents.map((a) => a.id)];
-    setLoadingAgents(new Set(allAgentIds));
+    setLoadingAgents(new Set(['all']));
+    setCliStatus({});
 
-    // Detect each agent individually
-    for (const agentId of BUILTIN_AGENTS) {
-      window.electronAPI.cli.detectOne(agentId).then((result) => {
-        setCliStatus((prev) => ({ ...prev, [agentId]: result }));
-        setLoadingAgents((prev) => {
-          const next = new Set(prev);
-          next.delete(agentId);
-          return next;
-        });
+    window.electronAPI.cli
+      .detect(customAgents, { includeWsl: wslEnabled })
+      .then((result) => {
+        const statusMap: Record<string, AgentCliInfo> = {};
+        for (const agent of result.agents) {
+          statusMap[agent.id] = agent;
+        }
+        setCliStatus(statusMap);
+        setLoadingAgents(new Set());
+      })
+      .catch(() => {
+        setLoadingAgents(new Set());
       });
-    }
-
-    for (const agent of customAgents) {
-      window.electronAPI.cli.detectOne(agent.id, agent).then((result) => {
-        setCliStatus((prev) => ({ ...prev, [agent.id]: result }));
-        setLoadingAgents((prev) => {
-          const next = new Set(prev);
-          next.delete(agent.id);
-          return next;
-        });
-      });
-    }
-  }, [customAgents]);
+  }, [customAgents, wslEnabled]);
 
   React.useEffect(() => {
     detectAllAgents();
@@ -991,6 +1074,37 @@ function AgentSettings() {
 
   const isRefreshing = loadingAgents.size > 0;
 
+  // Get all agents including WSL variants
+  const allAgentInfos = React.useMemo(() => {
+    const infos: Array<{
+      id: string;
+      baseId: BuiltinAgentId;
+      info: { name: string; description: string };
+      cli?: AgentCliInfo;
+    }> = [];
+
+    for (const agentId of BUILTIN_AGENTS) {
+      const baseInfo = BUILTIN_AGENT_INFO[agentId];
+      const nativeCli = cliStatus[agentId];
+      const wslCli = cliStatus[`${agentId}-wsl`];
+
+      // Add native agent
+      infos.push({ id: agentId, baseId: agentId, info: baseInfo, cli: nativeCli });
+
+      // Add WSL agent if detected
+      if (wslCli?.installed) {
+        infos.push({
+          id: `${agentId}-wsl`,
+          baseId: agentId,
+          info: { name: `${baseInfo.name}`, description: baseInfo.description },
+          cli: wslCli,
+        });
+      }
+    }
+
+    return infos;
+  }, [cliStatus]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1015,10 +1129,8 @@ function AgentSettings() {
 
       {/* Builtin Agents */}
       <div className="space-y-3">
-        {BUILTIN_AGENTS.map((agentId) => {
-          const info = BUILTIN_AGENT_INFO[agentId];
-          const cli = cliStatus[agentId];
-          const isLoading = loadingAgents.has(agentId);
+        {allAgentInfos.map(({ id: agentId, info, cli }) => {
+          const isLoading = isRefreshing;
           const isInstalled = cli?.installed ?? false;
           const config = agentSettings[agentId];
           const canEnable = isInstalled;
@@ -1037,6 +1149,11 @@ function AgentSettings() {
                   <span className="font-medium">{info.name}</span>
                   {!isLoading && cli?.version && (
                     <span className="text-xs text-muted-foreground">v{cli.version}</span>
+                  )}
+                  {!isLoading && cli?.environment === 'wsl' && (
+                    <span className="whitespace-nowrap rounded bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-600 dark:text-blue-400">
+                      WSL
+                    </span>
                   )}
                   {!isLoading && !isInstalled && (
                     <span className="whitespace-nowrap rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">

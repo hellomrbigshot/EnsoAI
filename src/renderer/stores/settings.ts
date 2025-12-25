@@ -1,4 +1,4 @@
-import type { BuiltinAgentId, CustomAgent } from '@shared/types';
+import type { BuiltinAgentId, CustomAgent, ShellConfig } from '@shared/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
@@ -178,6 +178,8 @@ interface SettingsState {
   sourceControlKeybindings: SourceControlKeybindings;
   agentSettings: AgentSettings;
   customAgents: CustomAgent[];
+  shellConfig: ShellConfig;
+  wslEnabled: boolean;
 
   setTheme: (theme: Theme) => void;
   setFontSize: (size: number) => void;
@@ -198,6 +200,8 @@ interface SettingsState {
   addCustomAgent: (agent: CustomAgent) => void;
   updateCustomAgent: (id: string, updates: Partial<CustomAgent>) => void;
   removeCustomAgent: (id: string) => void;
+  setShellConfig: (config: ShellConfig) => void;
+  setWslEnabled: (enabled: boolean) => void;
 }
 
 const defaultAgentSettings: AgentSettings = {
@@ -228,6 +232,10 @@ export const useSettingsStore = create<SettingsState>()(
       sourceControlKeybindings: defaultSourceControlKeybindings,
       agentSettings: defaultAgentSettings,
       customAgents: [],
+      shellConfig: {
+        shellType: window.electronAPI?.env.platform === 'win32' ? 'powershell7' : 'system',
+      },
+      wslEnabled: false,
 
       setTheme: (theme) => {
         const terminalTheme = get().terminalTheme;
@@ -315,6 +323,8 @@ export const useSettingsStore = create<SettingsState>()(
           agentSettings: newAgentSettings,
         });
       },
+      setShellConfig: (shellConfig) => set({ shellConfig }),
+      setWslEnabled: (wslEnabled) => set({ wslEnabled }),
     }),
     {
       name: 'enso-settings',
