@@ -459,14 +459,17 @@ export default function App() {
     }
   };
 
-  const handleRemoveWorktree = async (worktree: GitWorktree, deleteBranch?: boolean) => {
+  const handleRemoveWorktree = async (
+    worktree: GitWorktree,
+    options?: { deleteBranch?: boolean; force?: boolean }
+  ) => {
     if (!selectedRepo) return;
     await removeWorktreeMutation.mutateAsync({
       workdir: selectedRepo,
       options: {
         path: worktree.path,
-        force: worktree.prunable, // prunable 的直接 prune，否则 force remove
-        deleteBranch,
+        force: worktree.prunable || options?.force, // prunable 或用户选择强制删除
+        deleteBranch: options?.deleteBranch,
         branch: worktree.branch || undefined,
       },
     });

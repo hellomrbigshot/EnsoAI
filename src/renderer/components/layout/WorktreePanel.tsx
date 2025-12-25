@@ -26,6 +26,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { toastManager } from '@/components/ui/toast';
 import { CreateWorktreeDialog } from '@/components/worktree/CreateWorktreeDialog';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +40,10 @@ interface WorktreePanelProps {
   error?: string | null;
   onSelectWorktree: (worktree: GitWorktree) => void;
   onCreateWorktree: (options: WorktreeCreateOptions) => Promise<void>;
-  onRemoveWorktree: (worktree: GitWorktree, deleteBranch?: boolean) => Promise<void>;
+  onRemoveWorktree: (
+    worktree: GitWorktree,
+    options?: { deleteBranch?: boolean; force?: boolean }
+  ) => Promise<void>;
   onRefresh: () => void;
   onInitGit?: () => Promise<void>;
   width?: number;
@@ -71,6 +75,7 @@ export function WorktreePanel({
   const [searchQuery, setSearchQuery] = useState('');
   const [worktreeToDelete, setWorktreeToDelete] = useState<GitWorktree | null>(null);
   const [deleteBranch, setDeleteBranch] = useState(false);
+  const [forceDelete, setForceDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredWorktrees = worktrees.filter(
@@ -252,19 +257,32 @@ export function WorktreePanel({
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {worktreeToDelete?.branch && !worktreeToDelete?.isMainWorktree && (
-            <label className="flex items-center gap-2 px-6 py-2 text-sm cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={deleteBranch}
-                onChange={(e) => setDeleteBranch(e.target.checked)}
-                className="h-4 w-4 rounded border-input"
-              />
-              <span>
-                同时删除分支 <strong>{worktreeToDelete.branch}</strong>
-              </span>
-            </label>
-          )}
+          <div className="space-y-1">
+            {worktreeToDelete?.branch && !worktreeToDelete?.isMainWorktree && (
+              <label className="flex items-center gap-2 px-6 py-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={deleteBranch}
+                  onChange={(e) => setDeleteBranch(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span>
+                  同时删除分支 <strong>{worktreeToDelete.branch}</strong>
+                </span>
+              </label>
+            )}
+            {!worktreeToDelete?.prunable && (
+              <label className="flex items-center gap-2 px-6 py-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={forceDelete}
+                  onChange={(e) => setForceDelete(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span className="text-muted-foreground">强制删除（忽略未提交的修改）</span>
+              </label>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogClose
               render={
@@ -280,9 +298,20 @@ export function WorktreePanel({
                 if (worktreeToDelete) {
                   setIsDeleting(true);
                   try {
-                    await onRemoveWorktree(worktreeToDelete, deleteBranch);
+                    await onRemoveWorktree(worktreeToDelete, { deleteBranch, force: forceDelete });
                     setWorktreeToDelete(null);
                     setDeleteBranch(false);
+                    setForceDelete(false);
+                  } catch (err) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    const hasUncommitted = message.includes('modified or untracked');
+                    toastManager.add({
+                      type: 'error',
+                      title: '删除失败',
+                      description: hasUncommitted
+                        ? '目录包含未提交的修改，请勾选「强制删除」'
+                        : message,
+                    });
                   } finally {
                     setIsDeleting(false);
                   }
