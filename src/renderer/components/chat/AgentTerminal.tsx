@@ -132,6 +132,7 @@ export function AgentTerminal({
           window.electronAPI.notification.show({
             title: `${agentCommand} 已完成`,
             body: notificationBody,
+            sessionId,
           });
         }
       }, agentNotificationDelay * 1000);
@@ -143,6 +144,7 @@ export function AgentTerminal({
       cwd,
       agentNotificationEnabled,
       agentNotificationDelay,
+      sessionId,
     ]
   );
 

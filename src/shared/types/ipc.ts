@@ -89,6 +89,7 @@ export const IPC_CHANNELS = {
 
   // Notification
   NOTIFICATION_SHOW: 'notification:show',
+  NOTIFICATION_CLICK: 'notification:click',
 
   // Updater
   UPDATER_CHECK: 'updater:check',

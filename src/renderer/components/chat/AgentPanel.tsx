@@ -210,6 +210,14 @@ export function AgentPanel({ repoPath, cwd, isActive = false }: AgentPanelProps)
     });
   }, []);
 
+  // 监听通知点击，激活对应 session
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.notification.onClick((sessionId) => {
+      handleSelectSession(sessionId);
+    });
+    return unsubscribe;
+  }, [handleSelectSession]);
+
   const handleNextSession = useCallback(() => {
     setState((prev) => {
       const sessions = prev.sessions.filter((s) => s.cwd === cwd);

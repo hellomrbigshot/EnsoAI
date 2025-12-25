@@ -250,8 +250,17 @@ const electronAPI = {
 
   // Notification
   notification: {
-    show: (options: { title: string; body?: string; silent?: boolean }): Promise<void> =>
-      ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATION_SHOW, options),
+    show: (options: {
+      title: string;
+      body?: string;
+      silent?: boolean;
+      sessionId?: string;
+    }): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.NOTIFICATION_SHOW, options),
+    onClick: (callback: (sessionId: string) => void): (() => void) => {
+      const handler = (_: unknown, sessionId: string) => callback(sessionId);
+      ipcRenderer.on(IPC_CHANNELS.NOTIFICATION_CLICK, handler);
+      return () => ipcRenderer.off(IPC_CHANNELS.NOTIFICATION_CLICK, handler);
+    },
   },
 
   // Updater
