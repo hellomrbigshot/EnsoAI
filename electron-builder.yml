@@ -47,10 +47,8 @@ mac:
     - target: dmg
       arch: [arm64, x64]
   category: public.app-category.developer-tools
-  hardenedRuntime: true
-  gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
+  # Disable signing for now (requires Apple Developer account)
+  identity: null
   icon: build/icon.icns
 
 dmg:
