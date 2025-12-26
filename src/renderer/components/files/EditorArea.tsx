@@ -27,6 +27,7 @@ import { toastManager } from '@/components/ui/toast';
 import { useI18n } from '@/i18n';
 import { getXtermTheme, isTerminalThemeDark } from '@/lib/ghosttyTheme';
 import type { EditorTab, PendingCursor } from '@/stores/editor';
+import { useEditorStore } from '@/stores/editor';
 import { useSettingsStore } from '@/stores/settings';
 import { EditorTabs } from './EditorTabs';
 
@@ -213,6 +214,7 @@ export function EditorArea({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const { terminalTheme, editorSettings, claudeCodeIntegration } = useSettingsStore();
+  const setCurrentCursorLine = useEditorStore((state) => state.setCurrentCursorLine);
   const themeDefinedRef = useRef(false);
   const selectionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectionWidgetRef = useRef<monaco.editor.IContentWidget | null>(null);
@@ -405,6 +407,9 @@ export function EditorArea({
           const model = editor.getModel();
           if (!model) return;
 
+          // Update cursor line in store for "Open in editor" functionality
+          setCurrentCursorLine(selection.startLineNumber);
+
           const selectedText = model.getValueInRange(selection);
 
           // Show/hide selection widget
@@ -458,6 +463,7 @@ export function EditorArea({
       claudeCodeIntegration.selectionChangedDebounce,
       buildAtMentionedKeybinding,
       t,
+      setCurrentCursorLine,
     ]
   );
 
