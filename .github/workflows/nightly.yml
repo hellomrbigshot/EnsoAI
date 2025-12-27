@@ -123,7 +123,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build macOS (${{ matrix.arch }})
-        run: npx electron-builder --mac --${{ matrix.arch }} --publish never -c.mac.target=dmg -c.dmg.writeUpdateInfo=false
+        run: npx electron-builder --mac --${{ matrix.arch }} --publish never --config.mac.target=dmg --config.dmg.writeUpdateInfo=false
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -176,7 +176,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Windows
-        run: npx electron-builder --win --x64 --publish never -c.win.target=portable
+        run: npx electron-builder --win --x64 --publish never --config.win.target=portable
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -228,7 +228,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Linux
-        run: npx electron-builder --linux --x64 --publish never -c.linux.target=AppImage
+        run: npx electron-builder --linux --x64 --publish never --config.linux.target=AppImage
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
