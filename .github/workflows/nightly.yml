@@ -60,6 +60,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Vite
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.cache
+          key: vite-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            vite-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            vite-
+
       - name: Set version
         run: npm version ${{ needs.prepare.outputs.version }} --no-git-tag-version
 
@@ -85,7 +96,7 @@ jobs:
           - arch: arm64
             runner: macos-15
           - arch: x64
-            runner: macos-15-large
+            runner: macos-13
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -319,10 +330,10 @@ jobs:
 
           # 合并 macOS 的 yml 文件（两个架构）
           if [ -f "artifacts/mac-arm64/latest-mac.yml" ] && [ -f "artifacts/mac-x64/latest-mac.yml" ]; then
-            # 使用 arm64 的作为基础，添加 x64 的文件信息
-            cp artifacts/mac-arm64/latest-mac.yml release/latest-mac.yml
-            # 提取 x64 的 files 部分并追加
-            grep -A3 "^  - url:" artifacts/mac-x64/latest-mac.yml >> release/latest-mac.yml
+            # 提取 x64 的 files 条目（从 "  - url:" 到 "    size:" 的部分）
+            X64_ENTRY=$(sed -n '/^  - url:/,/^    size:/p' artifacts/mac-x64/latest-mac.yml)
+            # 在 arm64 yml 的 "path:" 行之前插入 x64 条目
+            awk -v entry="$X64_ENTRY" '/^path:/{print entry}1' artifacts/mac-arm64/latest-mac.yml > release/latest-mac.yml
           elif [ -f "artifacts/mac-arm64/latest-mac.yml" ]; then
             cp artifacts/mac-arm64/latest-mac.yml release/
           elif [ -f "artifacts/mac-x64/latest-mac.yml" ]; then
