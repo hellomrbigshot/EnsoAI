@@ -102,6 +102,8 @@ class CliDetector {
       fullCommand = `"${shell}" ${args.map((a) => `"${a}"`).join(' ')} "${escapedCommand}"`;
     }
 
+    console.log('[CliDetector] shell:', shell, 'args:', args);
+    console.log('[CliDetector] fullCommand:', fullCommand);
     const { stdout } = await execAsync(fullCommand, { timeout, env });
     return stdout;
   }
