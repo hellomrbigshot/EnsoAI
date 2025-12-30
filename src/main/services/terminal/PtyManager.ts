@@ -185,6 +185,9 @@ export class PtyManager {
     let ptyProcess: pty.IPty;
     // Login shell loads user's PATH from profile, no need to enhance
 
+    console.log('[PtyManager] spawn:', { shell, args, cwd });
+    console.log('[PtyManager] env.PATH:', process.env.PATH?.substring(0, 200));
+
     try {
       ptyProcess = pty.spawn(shell, args, {
         name: 'xterm-256color',
