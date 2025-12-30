@@ -1,14 +1,7 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import type {
-  AgentCliInfo,
-  AgentCliStatus,
-  BuiltinAgentId,
-  CustomAgent,
-  ShellConfig,
-} from '@shared/types';
-import { getEnhancedPath } from '../terminal/PtyManager';
-import { shellDetector } from '../terminal/ShellDetector';
+import type { AgentCliInfo, AgentCliStatus, BuiltinAgentId, CustomAgent } from '@shared/types';
+import { getEnvForCommand, getShellForCommand } from '../../utils/shell';
 
 const isWindows = process.platform === 'win32';
 
@@ -69,7 +62,6 @@ const BUILTIN_AGENT_CONFIGS: BuiltinAgentConfig[] = [
 
 export interface CliDetectOptions {
   includeWsl?: boolean;
-  shellConfig?: ShellConfig;
 }
 
 class CliDetector {
@@ -78,14 +70,6 @@ class CliDetector {
   private cacheTimestamp: number = 0;
   private readonly CACHE_TTL = 60000; // 1 minute cache
   private wslAvailable: boolean | null = null;
-  private currentShellConfig: ShellConfig | null = null;
-
-  /**
-   * Set shell config for command execution
-   */
-  setShellConfig(config: ShellConfig): void {
-    this.currentShellConfig = config;
-  }
 
   /**
    * Execute command in login shell to load user's environment (PATH, nvm, etc.)
@@ -93,41 +77,13 @@ class CliDetector {
    */
   private async execInLoginShell(command: string, timeout = 5000): Promise<string> {
     const escapedCommand = command.replace(/"/g, '\\"');
-
-    // Use user's configured shell if available
-    if (this.currentShellConfig) {
-      const { shell, execArgs } = shellDetector.resolveShellForCommand(this.currentShellConfig);
-      // Quote shell path in case it contains spaces (e.g., "C:\Program Files\PowerShell\7\pwsh.exe")
-      const fullCommand = `"${shell}" ${execArgs.map((a) => `"${a}"`).join(' ')} "${escapedCommand}"`;
-      // Don't override PATH - let the login shell load environment from profile
-      // This is important for version managers like vfox that initialize in profile
-      const { stdout } = await execAsync(fullCommand, { timeout });
-      return stdout;
-    }
-
-    // Fallback to default behavior
-    if (isWindows) {
-      // Windows: use PowerShell by default for better environment support
-      const { stdout } = await execAsync(`powershell.exe -NoLogo -Command "${escapedCommand}"`, {
-        timeout,
-        env: { ...process.env, PATH: getEnhancedPath() },
-      });
-      return stdout;
-    }
-
-    // Unix: use $SHELL with login flags
-    const shell = process.env.SHELL || '/bin/sh';
-    try {
-      const { stdout } = await execAsync(`${shell} -ilc "${escapedCommand}"`, {
-        timeout,
-      });
-      return stdout;
-    } catch {
-      const { stdout } = await execAsync(`${shell} -lc "${escapedCommand}"`, {
-        timeout,
-      });
-      return stdout;
-    }
+    const { shell, args } = getShellForCommand();
+    const fullCommand = `"${shell}" ${args.map((a) => `"${a}"`).join(' ')} "${escapedCommand}"`;
+    const { stdout } = await execAsync(fullCommand, {
+      timeout,
+      env: getEnvForCommand(),
+    });
+    return stdout;
   }
 
   private async isWslAvailable(): Promise<boolean> {
@@ -291,13 +247,8 @@ class CliDetector {
   async detectOne(
     agentId: string,
     customAgent?: CustomAgent,
-    options?: CliDetectOptions
+    _options?: CliDetectOptions
   ): Promise<AgentCliInfo> {
-    // Set shell config if provided
-    if (options?.shellConfig) {
-      this.setShellConfig(options.shellConfig);
-    }
-
     // Check cache first
     if (this.isCacheValid() && this.cachedAgents.has(agentId)) {
       return this.cachedAgents.get(agentId)!;
@@ -457,11 +408,6 @@ class CliDetector {
     customAgents: CustomAgent[] = [],
     options: CliDetectOptions = {}
   ): Promise<AgentCliStatus> {
-    // Set shell config if provided
-    if (options.shellConfig) {
-      this.setShellConfig(options.shellConfig);
-    }
-
     // Return cached status if still valid
     if (this.isCacheValid() && this.cachedStatus) {
       return this.cachedStatus;

@@ -72,12 +72,12 @@ export function HapiSettings() {
   // Fetch initial status
   React.useEffect(() => {
     // Check hapi global installation
-    window.electronAPI.hapi.checkGlobal(false, shellConfig).then((result) => {
+    window.electronAPI.hapi.checkGlobal(false).then((result) => {
       setHapiGlobal(result);
     });
 
     // Check happy global installation
-    window.electronAPI.happy.checkGlobal(false, shellConfig).then((result) => {
+    window.electronAPI.happy.checkGlobal(false).then((result) => {
       setHappyGlobal(result);
     });
 
@@ -110,7 +110,7 @@ export function HapiSettings() {
       cleanupHapi();
       cleanupCf();
     };
-  }, [setHapiSettings, shellConfig]);
+  }, [setHapiSettings]);
 
   const getConfig = React.useCallback(() => {
     return {

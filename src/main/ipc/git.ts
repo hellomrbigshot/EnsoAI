@@ -5,7 +5,7 @@ import path from 'node:path';
 import { type FileChangeStatus, IPC_CHANNELS } from '@shared/types';
 import { ipcMain } from 'electron';
 import { GitService } from '../services/git/GitService';
-import { findLoginShell, getEnhancedPath } from '../services/terminal/PtyManager';
+import { getEnvForCommand, getShellForCommand } from '../utils/shell';
 
 const gitServices = new Map<string, GitService>();
 
@@ -250,14 +250,13 @@ ${truncatedDiff}`;
           options.model || 'haiku',
         ];
 
-        // Use login shell to load user environment (nvm, homebrew, etc.)
-        // Same approach as AgentTerminal for consistent shell configuration
+        // Use user's configured shell to load environment (nvm, homebrew, etc.)
         const claudeCommand = `claude ${claudeArgs.join(' ')}`;
-        const { shell, args: shellArgs } = findLoginShell();
+        const { shell, args: shellArgs } = getShellForCommand();
 
         const proc = spawn(shell, [...shellArgs, claudeCommand], {
           cwd: resolved,
-          env: { ...process.env, PATH: getEnhancedPath() },
+          env: getEnvForCommand(),
         });
 
         // Handle stdin errors to prevent EPIPE crashes
@@ -417,11 +416,11 @@ ${gitLog || '(No commit history available)'}`;
       ];
 
       const claudeCommand = `claude ${claudeArgs.join(' ')}`;
-      const { shell, args: shellArgs } = findLoginShell();
+      const { shell, args: shellArgs } = getShellForCommand();
 
       const proc = spawn(shell, [...shellArgs, claudeCommand], {
         cwd: resolved,
-        env: { ...process.env, PATH: getEnhancedPath() },
+        env: getEnvForCommand(),
       });
 
       activeCodeReviews.set(reviewId, proc);

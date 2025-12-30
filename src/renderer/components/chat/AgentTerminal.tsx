@@ -61,11 +61,11 @@ export function AgentTerminal({
   // Check hapi global installation on mount (only for hapi environment)
   useEffect(() => {
     if (environment === 'hapi') {
-      window.electronAPI.hapi.checkGlobal(false, shellConfig).then((status) => {
+      window.electronAPI.hapi.checkGlobal(false).then((status) => {
         setHapiGlobalInstalled(status.installed);
       });
     }
-  }, [environment, shellConfig]);
+  }, [environment]);
   const outputBufferRef = useRef('');
   const startTimeRef = useRef<number | null>(null);
   const hasInitializedRef = useRef(false);

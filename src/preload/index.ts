@@ -290,13 +290,13 @@ const electronAPI = {
   cli: {
     detect: (
       customAgents?: CustomAgent[],
-      options?: { includeWsl?: boolean; forceRefresh?: boolean; shellConfig?: ShellConfig }
+      options?: { includeWsl?: boolean; forceRefresh?: boolean }
     ): Promise<AgentCliStatus> =>
       ipcRenderer.invoke(IPC_CHANNELS.CLI_DETECT, customAgents, options),
     detectOne: (
       agentId: string,
       customAgent?: CustomAgent,
-      options?: { shellConfig?: ShellConfig }
+      options?: { includeWsl?: boolean }
     ): Promise<AgentCliInfo> =>
       ipcRenderer.invoke(IPC_CHANNELS.CLI_DETECT_ONE, agentId, customAgent, options),
     // CLI Installer
@@ -427,11 +427,8 @@ const electronAPI = {
 
   // Hapi Remote Sharing
   hapi: {
-    checkGlobal: (
-      forceRefresh?: boolean,
-      shellConfig?: ShellConfig
-    ): Promise<{ installed: boolean; version?: string }> =>
-      ipcRenderer.invoke(IPC_CHANNELS.HAPI_CHECK_GLOBAL, forceRefresh, shellConfig),
+    checkGlobal: (forceRefresh?: boolean): Promise<{ installed: boolean; version?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.HAPI_CHECK_GLOBAL, forceRefresh),
     start: (config: {
       webappPort: number;
       cliApiToken: string;
@@ -487,11 +484,8 @@ const electronAPI = {
 
   // Happy
   happy: {
-    checkGlobal: (
-      forceRefresh?: boolean,
-      shellConfig?: ShellConfig
-    ): Promise<{ installed: boolean; version?: string }> =>
-      ipcRenderer.invoke(IPC_CHANNELS.HAPPY_CHECK_GLOBAL, forceRefresh, shellConfig),
+    checkGlobal: (forceRefresh?: boolean): Promise<{ installed: boolean; version?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.HAPPY_CHECK_GLOBAL, forceRefresh),
   },
 
   // Cloudflared Tunnel
