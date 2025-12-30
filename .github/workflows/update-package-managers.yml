@@ -242,5 +242,6 @@ jobs:
         with:
           identifier: J3n5en.EnsoAI
           version: ${{ steps.version.outputs.version }}
+          release-tag: ${{ steps.version.outputs.tag }}
           installers-regex: 'EnsoAI-Setup-[\d\.]+\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
