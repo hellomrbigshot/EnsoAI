@@ -35,7 +35,7 @@ interface CloudflaredStatus {
 
 export function HapiSettings() {
   const { t } = useI18n();
-  const { hapiSettings, setHapiSettings, shellConfig } = useSettingsStore();
+  const { hapiSettings, setHapiSettings } = useSettingsStore();
   const [status, setStatus] = React.useState<HapiStatus>({ running: false });
   const [loading, setLoading] = React.useState(false);
 

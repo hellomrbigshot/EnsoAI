@@ -114,7 +114,7 @@ export function GeneralSettings() {
 
   const [shells, setShells] = React.useState<ShellInfo[]>([]);
   const [loadingShells, setLoadingShells] = React.useState(true);
-  const isWindows = window.electronAPI?.env.platform === 'win32';
+  const _isWindows = window.electronAPI?.env.platform === 'win32';
   const appVersion = window.electronAPI?.env.appVersion || '0.0.0';
 
   // Update status state
@@ -480,7 +480,7 @@ export function GeneralSettings() {
               className="w-64"
               aria-invalid={
                 proxySettings.enabled &&
-                proxySettings.server &&
+                !!proxySettings.server &&
                 !/^((https?|socks5?h?|socks4a?):\/\/)?[\w.-]+:\d+/.test(proxySettings.server)
               }
             />

@@ -26,7 +26,7 @@ interface GitViewProps {
   isActive?: boolean;
 }
 
-export function GitView({ isActive = false }: GitViewProps) {
+export function GitView({ isActive: _isActive = false }: GitViewProps) {
   const { t } = useI18n();
   const { currentWorktree } = useWorktreeStore();
 

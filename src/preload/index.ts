@@ -2,7 +2,6 @@ import { Buffer } from 'node:buffer';
 import type { Locale } from '@shared/i18n';
 import type {
   AgentCliInfo,
-  AgentCliStatus,
   AgentMetadata,
   CommitFileChange,
   ConflictResolution,

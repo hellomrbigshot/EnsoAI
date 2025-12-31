@@ -10,7 +10,7 @@ interface UseAppKeyboardShortcutsOptions {
 }
 
 export function useAppKeyboardShortcuts({
-  activeWorktreePath,
+  activeWorktreePath: _activeWorktreePath,
   onTabSwitch,
   onActionPanelToggle,
 }: UseAppKeyboardShortcutsOptions) {
