@@ -294,17 +294,33 @@ ${truncatedDiff}`;
           }
 
           try {
-            const result = JSON.parse(stdout);
+            // 清理 stdout，提取 JSON 对象（可能有额外的日志输出）
+            let jsonStr = stdout.trim();
+
+            // 尝试找到第一个完整的 JSON 对象
+            const jsonStart = jsonStr.indexOf('{');
+            const jsonEnd = jsonStr.lastIndexOf('}');
+
+            if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+              jsonStr = jsonStr.slice(jsonStart, jsonEnd + 1);
+            }
+
+            const result = JSON.parse(jsonStr);
+
+            console.log('[GenerateCommitMsg] Parsed result:', JSON.stringify(result, null, 2));
+
             if (result.type === 'result' && result.subtype === 'success' && result.result) {
               resolve({ success: true, message: result.result });
             } else {
+              console.error('[GenerateCommitMsg] Unexpected result format:', result);
               resolve({
                 success: false,
                 error: result.error || 'Unknown error',
               });
             }
-          } catch {
+          } catch (err) {
             console.error('[GenerateCommitMsg] Failed to parse stdout:', stdout);
+            console.error('[GenerateCommitMsg] Parse error:', err);
             console.error('[GenerateCommitMsg] stderr:', stderr);
             resolve({ success: false, error: 'Failed to parse response' });
           }
