@@ -1,4 +1,11 @@
-export type BuiltinAgentId = 'claude' | 'codex' | 'droid' | 'gemini' | 'auggie' | 'cursor';
+export type BuiltinAgentId =
+  | 'claude'
+  | 'codex'
+  | 'droid'
+  | 'gemini'
+  | 'auggie'
+  | 'cursor'
+  | 'opencode';
 
 export type AgentEnvironment = 'native' | 'hapi' | 'happy';
 

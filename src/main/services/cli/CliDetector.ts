@@ -71,6 +71,13 @@ const BUILTIN_AGENT_CONFIGS: BuiltinAgentConfig[] = [
     versionFlag: '--version',
     versionRegex: /(\d+\.\d+\.\d+)/,
   },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    command: 'opencode',
+    versionFlag: '--version',
+    versionRegex: /(\d+\.\d+\.\d+)/,
+  },
 ];
 
 class CliDetector {

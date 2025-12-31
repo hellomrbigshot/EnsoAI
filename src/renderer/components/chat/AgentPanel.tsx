@@ -22,6 +22,7 @@ const AGENT_INFO: Record<string, { name: string; command: string }> = {
   gemini: { name: 'Gemini', command: 'gemini' },
   auggie: { name: 'Auggie', command: 'auggie' },
   cursor: { name: 'Cursor', command: 'cursor-agent' },
+  opencode: { name: 'OpenCode', command: 'opencode' },
 };
 
 function getDefaultAgentId(

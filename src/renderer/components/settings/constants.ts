@@ -34,6 +34,7 @@ export const BUILTIN_AGENT_INFO: Record<BuiltinAgentId, { name: string; descript
   gemini: { name: 'Gemini', description: 'Google Gemini CLI' },
   auggie: { name: 'Auggie', description: 'Augment Code CLI' },
   cursor: { name: 'Cursor', description: 'Cursor Agent CLI' },
+  opencode: { name: 'OpenCode', description: 'OpenCode AI CLI' },
 };
 
 export const BUILTIN_AGENTS: BuiltinAgentId[] = [
@@ -43,4 +44,5 @@ export const BUILTIN_AGENTS: BuiltinAgentId[] = [
   'gemini',
   'auggie',
   'cursor',
+  'opencode',
 ];
