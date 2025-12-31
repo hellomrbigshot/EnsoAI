@@ -470,7 +470,8 @@ export function TreeSidebar({
                       draggedRepoIndexRef.current > index && (
                         <div className="absolute -top-0.5 left-2 right-2 h-0.5 bg-primary rounded-full" />
                       )}
-                    <div
+                    <button
+                      type="button"
                       draggable={!searchQuery && !!onReorderRepositories}
                       onDragStart={(e) => handleRepoDragStart(e, index, repo)}
                       onDragEnd={handleRepoDragEnd}
@@ -478,44 +479,43 @@ export function TreeSidebar({
                       onDragLeave={handleRepoDragLeave}
                       onDrop={(e) => handleRepoDrop(e, index)}
                       onContextMenu={(e) => handleRepoContextMenu(e, repo)}
+                      onClick={() => {
+                        if (isSelected) {
+                          // Already selected: just toggle expand/collapse
+                          toggleRepoExpanded(repo.path);
+                        } else {
+                          // Not selected: select and expand if not already expanded
+                          onSelectRepo(repo.path);
+                          if (!isExpanded) {
+                            toggleRepoExpanded(repo.path);
+                          }
+                        }
+                      }}
                       className={cn(
-                        'flex w-full items-center gap-1 rounded-lg px-2 py-2 text-left transition-colors',
+                        'flex w-full items-center gap-1 rounded-lg px-2 py-2 text-left transition-colors cursor-pointer',
                         isSelected ? 'bg-accent/50 text-accent-foreground' : 'hover:bg-accent/30',
                         draggedRepoIndexRef.current === index && 'opacity-50'
                       )}
                     >
                       {/* Expand/collapse chevron */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleRepoExpanded(repo.path);
-                        }}
-                        className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-accent/50"
-                      >
+                      <span className="shrink-0 w-5 h-5 flex items-center justify-center">
                         {isExpanded ? (
                           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                         ) : (
                           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
-                      </button>
-                      {/* Clickable area for selecting repo */}
-                      <button
-                        type="button"
-                        onClick={() => onSelectRepo(repo.path)}
-                        className="flex flex-1 items-center gap-2 min-w-0"
-                      >
-                        <FolderGit2
-                          className={cn(
-                            'h-4 w-4 shrink-0',
-                            isSelected ? 'text-accent-foreground' : 'text-muted-foreground'
-                          )}
-                        />
-                        <span className="min-w-0 flex-1 truncate font-medium text-sm text-left">
-                          {repo.name}
-                        </span>
-                      </button>
-                    </div>
+                      </span>
+                      {/* Repo icon and name */}
+                      <FolderGit2
+                        className={cn(
+                          'h-4 w-4 shrink-0',
+                          isSelected ? 'text-accent-foreground' : 'text-muted-foreground'
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate font-medium text-sm text-left">
+                        {repo.name}
+                      </span>
+                    </button>
                     {/* Drop indicator - bottom */}
                     {dropRepoTargetIndex === index &&
                       draggedRepoIndexRef.current !== null &&
