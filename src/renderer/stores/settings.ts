@@ -178,7 +178,7 @@ export const defaultClaudeCodeIntegrationSettings: ClaudeCodeIntegrationSettings
   enabled: true,
   selectionChangedDebounce: 300,
   atMentionedKeybinding: { key: 'm', meta: true, shift: true }, // Cmd/Ctrl+Shift+M
-  stopHookEnabled: false, // Disabled by default, user opt-in
+  stopHookEnabled: true, // Enable Stop hook for precise agent completion notifications
 };
 
 // Commit message generator settings
