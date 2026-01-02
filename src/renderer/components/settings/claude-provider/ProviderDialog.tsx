@@ -32,7 +32,8 @@ export function ProviderDialog({
 }: ProviderDialogProps) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const { addClaudeProvider, updateClaudeProvider } = useSettingsStore();
+  const addClaudeProvider = useSettingsStore((s) => s.addClaudeProvider);
+  const updateClaudeProvider = useSettingsStore((s) => s.updateClaudeProvider);
 
   const isEditing = !!provider;
 

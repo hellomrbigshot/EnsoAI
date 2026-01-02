@@ -15,10 +15,8 @@ interface ProviderListProps {
 export function ProviderList({ className }: ProviderListProps) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const { providers, removeClaudeProvider } = useSettingsStore((s) => ({
-    providers: s.claudeCodeIntegration.providers,
-    removeClaudeProvider: s.removeClaudeProvider,
-  }));
+  const providers = useSettingsStore((s) => s.claudeCodeIntegration.providers);
+  const removeClaudeProvider = useSettingsStore((s) => s.removeClaudeProvider);
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingProvider, setEditingProvider] = React.useState<ClaudeProvider | null>(null);
@@ -33,14 +31,14 @@ export function ProviderList({ className }: ProviderListProps) {
 
   // 计算当前激活的 Provider
   const activeProvider = React.useMemo(() => {
-    if (!claudeData?.settings?.env) return null;
-    const { env } = claudeData.settings;
+    const env = claudeData?.settings?.env;
+    if (!env) return null;
     return (
       providers.find(
         (p) => p.baseUrl === env.ANTHROPIC_BASE_URL && p.authToken === env.ANTHROPIC_AUTH_TOKEN
       ) ?? null
     );
-  }, [providers, claudeData?.settings?.env]);
+  }, [providers, claudeData?.settings]);
 
   // 检查当前配置是否未保存
   const hasUnsavedConfig = React.useMemo(() => {
@@ -103,11 +101,19 @@ export function ProviderList({ className }: ProviderListProps) {
             return (
               <div
                 key={provider.id}
+                role="button"
+                tabIndex={isActive ? -1 : 0}
                 className={cn(
                   'group flex items-center justify-between rounded-md px-3 py-2 transition-colors',
                   isActive ? 'bg-accent' : 'cursor-pointer hover:bg-accent/50'
                 )}
                 onClick={() => !isActive && handleSwitch(provider)}
+                onKeyDown={(e) => {
+                  if (!isActive && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleSwitch(provider);
+                  }
+                }}
               >
                 <div className="flex items-center gap-2">
                   {isActive ? (
