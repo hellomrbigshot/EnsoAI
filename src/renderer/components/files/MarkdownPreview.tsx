@@ -5,6 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from '@/components/ui/code-block';
+import { MermaidRenderer } from '@/components/ui/mermaid-renderer';
 
 function resolveImageSrc(src: string | undefined, basePath: string): string | undefined {
   if (!src) return src;
@@ -36,6 +37,11 @@ function createMarkdownComponents(basePath: string): Components {
       const match = /language-(\w+)/.exec(className || '');
       const language = match?.[1];
       const codeString = String(children).replace(/\n$/, '');
+
+      // 检测 mermaid 代码块
+      if (language === 'mermaid') {
+        return <MermaidRenderer code={codeString} />;
+      }
 
       if (language) {
         return <CodeBlock code={codeString} language={language} />;

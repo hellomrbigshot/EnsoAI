@@ -15,6 +15,7 @@ import {
   DialogPopup,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MermaidRenderer } from '@/components/ui/mermaid-renderer';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toastManager } from '@/components/ui/toast';
 import { useCodeReview } from '@/hooks/useCodeReview';
@@ -31,6 +32,11 @@ const markdownComponents: Components = {
     const match = /language-(\w+)/.exec(className || '');
     const language = match?.[1];
     const codeString = String(children).replace(/\n$/, '');
+
+    // 检测 mermaid 代码块
+    if (language === 'mermaid') {
+      return <MermaidRenderer code={codeString} />;
+    }
 
     // 有语言标识则为块级代码
     if (language) {
