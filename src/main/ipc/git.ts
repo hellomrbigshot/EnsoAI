@@ -5,7 +5,7 @@ import path from 'node:path';
 import { type FileChangeStatus, IPC_CHANNELS } from '@shared/types';
 import { ipcMain } from 'electron';
 import { GitService } from '../services/git/GitService';
-import { getEnvForCommand, getShellForCommand } from '../utils/shell';
+import { getEnvForCommand, getShellForCommand, killProcessTree } from '../utils/shell';
 
 const gitServices = new Map<string, GitService>();
 
@@ -272,7 +272,7 @@ ${truncatedDiff}`;
         let stderr = '';
 
         const timer = setTimeout(() => {
-          proc.kill('SIGTERM');
+          killProcessTree(proc);
           resolve({ success: false, error: 'timeout' });
         }, timeoutMs);
 
@@ -510,7 +510,7 @@ ${gitLog || '(No commit history available)'}`;
   ipcMain.handle(IPC_CHANNELS.GIT_CODE_REVIEW_STOP, async (_, reviewId: string): Promise<void> => {
     const proc = activeCodeReviews.get(reviewId);
     if (proc) {
-      proc.kill('SIGTERM');
+      killProcessTree(proc);
       activeCodeReviews.delete(reviewId);
     }
   });
