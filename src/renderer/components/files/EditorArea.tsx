@@ -86,6 +86,7 @@ export function EditorArea({
   // Markdown preview state
   const isMarkdown = isMarkdownFile(activeTabPath);
   const [showPreview, setShowPreview] = useState(true);
+  const [editorReady, setEditorReady] = useState(false);
   const [previewWidth, setPreviewWidth] = useState(50); // percentage
   const resizingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -268,6 +269,7 @@ export function EditorArea({
     (editor, m) => {
       editorRef.current = editor;
       monacoRef.current = m;
+      setEditorReady(true);
 
       // Add Cmd/Ctrl+S shortcut
       editor.addCommand(m.KeyMod.CtrlCmd | m.KeyCode.KeyS, () => {
@@ -367,6 +369,7 @@ export function EditorArea({
 
   // Claude Code Integration: Selection widget and notifications (dynamic based on settings)
   useEffect(() => {
+    if (!editorReady) return;
     const editor = editorRef.current;
     const m = monacoRef.current;
     if (!editor || !m) return;
@@ -544,6 +547,7 @@ export function EditorArea({
       }
     };
   }, [
+    editorReady,
     claudeCodeIntegration.enabled,
     claudeCodeIntegration.selectionChangedDebounce,
     activeTabPath,
