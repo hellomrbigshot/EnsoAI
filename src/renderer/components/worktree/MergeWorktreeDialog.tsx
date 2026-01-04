@@ -38,6 +38,7 @@ interface MergeWorktreeDialogProps {
   isLoading?: boolean;
   onMerge: (options: WorktreeMergeOptions) => Promise<WorktreeMergeResult>;
   onConflicts?: (result: WorktreeMergeResult, options: WorktreeMergeOptions) => void;
+  onSuccess?: (options: { deletedWorktree: boolean }) => void;
 }
 
 export function MergeWorktreeDialog({
@@ -48,6 +49,7 @@ export function MergeWorktreeDialog({
   isLoading,
   onMerge,
   onConflicts,
+  onSuccess,
 }: MergeWorktreeDialogProps) {
   const { t } = useI18n();
   const [targetBranch, setTargetBranch] = React.useState<string>('');
@@ -112,6 +114,7 @@ export function MergeWorktreeDialog({
         }
         onOpenChange(false);
         resetForm();
+        onSuccess?.({ deletedWorktree: deleteWorktree });
       } else if (result.conflicts && result.conflicts.length > 0) {
         // Handle conflicts - pass options for cleanup after conflict resolution
         onOpenChange(false);

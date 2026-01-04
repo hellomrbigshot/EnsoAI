@@ -848,6 +848,16 @@ export default function App() {
           isLoading={mergeMutation.isPending}
           onMerge={handleMerge}
           onConflicts={handleMergeConflicts}
+          onSuccess={({ deletedWorktree }) => {
+            if (deletedWorktree && mergeWorktree) {
+              clearEditorWorktreeState(mergeWorktree.path);
+              if (activeWorktree?.path === mergeWorktree.path) {
+                setActiveWorktree(null);
+              }
+            }
+            refetch();
+            refetchBranches();
+          }}
         />
       )}
 
