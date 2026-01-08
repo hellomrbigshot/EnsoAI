@@ -54,6 +54,12 @@ interface AtMentionedParams {
   lineEnd: number;
 }
 
+// Client connection with associated workspace
+interface ClientConnection {
+  ws: WebSocket;
+  workspace: string | null; // null means not yet identified
+}
+
 interface ClaudeIdeBridgeInstance {
   port: number;
   authToken: string;
@@ -273,12 +279,86 @@ export async function startClaudeIdeBridge(
 
   const jsonRpcHandler = createJsonRpcHandler({ ideName });
 
-  let currentClient: WebSocket | null = null;
+  // Map of client connections, keyed by unique client ID
+  const clients = new Map<string, ClientConnection>();
+  let clientIdCounter = 0;
 
-  // Function to send notifications to Claude Code
-  function sendNotification(method: string, params: object): void {
-    if (currentClient && currentClient.readyState === 1) {
-      currentClient.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
+  // Find matching workspace folder for a file path
+  function findWorkspaceForPath(filePath: string): string | null {
+    let bestMatch: string | null = null;
+    let bestMatchLength = 0;
+
+    for (const folder of currentWorkspaceFolders) {
+      if (filePath.startsWith(folder) && folder.length > bestMatchLength) {
+        bestMatch = folder;
+        bestMatchLength = folder.length;
+      }
+    }
+
+    return bestMatch;
+  }
+
+  // Find client by workspace path (longest prefix match)
+  function findClientForPath(filePath: string): ClientConnection | null {
+    let bestMatch: ClientConnection | null = null;
+    let bestMatchLength = 0;
+
+    // First try to match by client's registered workspace
+    for (const [, client] of clients) {
+      if (client.workspace && filePath.startsWith(client.workspace)) {
+        if (client.workspace.length > bestMatchLength) {
+          bestMatch = client;
+          bestMatchLength = client.workspace.length;
+        }
+      }
+    }
+
+    if (bestMatch) {
+      return bestMatch;
+    }
+
+    // If no direct workspace match, try to find a client whose workspace
+    // matches the same workspace folder as the filePath
+    const targetWorkspace = findWorkspaceForPath(filePath);
+    if (targetWorkspace) {
+      for (const [, client] of clients) {
+        // Client with matching workspace folder
+        if (client.workspace && client.workspace.startsWith(targetWorkspace)) {
+          return client;
+        }
+        // Client without workspace but connected - assign this workspace folder
+        if (!client.workspace) {
+          client.workspace = targetWorkspace;
+          return client;
+        }
+      }
+    }
+
+    // Final fallback: return first connected client
+    if (clients.size > 0) {
+      const firstClient = clients.entries().next().value;
+      return firstClient ? firstClient[1] : null;
+    }
+
+    return null;
+  }
+
+  // Function to send notifications to specific Claude Code client
+  function sendNotificationToClient(
+    client: ClientConnection,
+    method: string,
+    params: object
+  ): void {
+    if (client.ws.readyState === 1) {
+      client.ws.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
+    }
+  }
+
+  // Function to send notifications to Claude Code (routed by filePath)
+  function sendNotification(method: string, params: { filePath: string } & object): void {
+    const client = findClientForPath(params.filePath);
+    if (client) {
+      sendNotificationToClient(client, method, params);
     }
   }
 
@@ -298,19 +378,39 @@ export async function startClaudeIdeBridge(
       return;
     }
 
-    // Only keep one client
-    if (currentClient && currentClient !== ws) {
-      try {
-        currentClient.close();
-      } catch {
-        // Ignore
-      }
-    }
-    currentClient = ws;
+    // Get workspace from header if provided
+    const workspaceHeader = req.headers['x-claude-code-workspace'];
+    const workspace =
+      typeof workspaceHeader === 'string' ? workspaceHeader : (workspaceHeader?.[0] ?? null);
 
-    ws.on('message', (data) => jsonRpcHandler(ws, data));
+    const clientId = String(++clientIdCounter);
+    const clientConnection: ClientConnection = { ws, workspace };
+    clients.set(clientId, clientConnection);
+
+    // Custom message handler that can update workspace from initialize
+    ws.on('message', (data) => {
+      const rawStr = data.toString('utf-8');
+      const msg = safeJsonParse(rawStr);
+
+      // Try to extract workspace from initialize request
+      if (msg?.method === 'initialize' && msg.params) {
+        const params = msg.params as Record<string, unknown>;
+        // Check clientInfo.cwd or rootUri
+        const clientInfo = params.clientInfo as Record<string, unknown> | undefined;
+        const cwd = clientInfo?.cwd as string | undefined;
+        const rootUri = params.rootUri as string | undefined;
+        const workspacePath = cwd || rootUri?.replace('file://', '');
+
+        if (workspacePath && !clientConnection.workspace) {
+          clientConnection.workspace = workspacePath;
+        }
+      }
+
+      jsonRpcHandler(ws, data);
+    });
+
     ws.on('close', () => {
-      if (currentClient === ws) currentClient = null;
+      clients.delete(clientId);
     });
   });
 
