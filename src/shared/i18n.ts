@@ -620,6 +620,22 @@ export const zhTranslations: Record<string, string> = {
   'Review content copied to clipboard': '审查内容已复制到剪贴板',
   'Copy failed': '复制失败',
   'Failed to copy content': '复制内容失败',
+  'Branch Name Generator': '分支名称生成器',
+  'Auto-generate branch names using Claude': '使用 Claude 自动生成分支名称',
+  // 'Enable Generator': '启用生成器',
+  'Generate branch names with AI assistance': '使用 AI 辅助生成分支名称',
+  'Claude model for generating branch names': '用于生成分支名称的 Claude 模型',
+  Prompt: '提示词',
+  'Customize the AI prompt for generating branch names': '自定义生成分支名称的 AI 提示词',
+  'Enter a prompt template, and the AI will generate branch names according to your rules.\nAvailable variables:\n• {description} - Feature description\n• {current_date} - Current date\n• {current_time} - Current time':
+    '输入提示词模板，AI 将根据您的规则生成分支名称。\n可用变量：\n• ⁠{description} - 功能描述\n• ⁠{current_date} - 当前日期\n• ⁠{current_time} - 当前时间',
+  'Generate branch name': '生成分支名称',
+  'Failed to generate branch name': '生成分支名称失败',
+  'Generating branch name...': '正在生成分支名称...',
+  'Restore Default': '恢复默认',
+  'Restore default prompt': '恢复默认提示词',
+  'This will restore the default AI prompt for generating branch names. Your custom prompt will be lost.':
+    '这将恢复生成分支名称的默认 AI 提示词。您的自定义提示词将丢失。',
   // Auto Save section
   'Auto Save': '自动保存',
   'Auto save settings': '自动保存设置',

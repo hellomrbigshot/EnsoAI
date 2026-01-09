@@ -549,6 +549,112 @@ ${gitLog || '(No commit history available)'}`;
     }
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.GIT_GENERATE_BRANCH_NAME,
+    async (
+      _,
+      workdir: string,
+      options: { prompt: string; model: string }
+    ): Promise<{ success: boolean; branchName?: string; error?: string }> => {
+      const resolved = validateWorkdir(workdir);
+
+      return new Promise((resolve) => {
+        const { shell, args: shellArgs } = getShellForCommand();
+        const claudeArgs = [
+          '-p',
+          '--output-format',
+          'json',
+          '--no-session-persistence',
+          '--tools',
+          '',
+          '--model',
+          options.model || 'haiku',
+        ];
+        const command = `claude ${claudeArgs.join(' ')}`;
+
+        const proc = spawn(shell, [...shellArgs, command], {
+          cwd: resolved,
+          env: { ...getEnvForCommand(), ...getProxyEnvVars() },
+        });
+
+        proc.stdin.on('error', (err) => {
+          if ((err as NodeJS.ErrnoException).code !== 'EPIPE') {
+            console.error('[GenerateBranchName] stdin error:', err.message);
+          }
+        });
+
+        proc.stdin.write(options.prompt);
+        proc.stdin.end();
+
+        let stdout = '';
+        let stderr = '';
+
+        const timer = setTimeout(() => {
+          killProcessTree(proc);
+          resolve({ success: false, error: 'timeout' });
+        }, 60000);
+
+        proc.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        proc.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        proc.on('close', (code) => {
+          clearTimeout(timer);
+
+          if (code !== 0) {
+            resolve({ success: false, error: stderr || `Exit code: ${code}` });
+            return;
+          }
+
+          try {
+            // 清理 ANSI 转义码（与 StreamJsonParser 保持一致）
+            // biome-ignore lint/complexity/useRegexLiterals: Using RegExp constructor to avoid control character lint error
+            const ansiRegex = new RegExp(
+              '[\\u001b\\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]',
+              'g'
+            );
+            let jsonStr = stdout.replace(ansiRegex, '').trim();
+
+            const jsonStart = jsonStr.indexOf('{');
+            const jsonEnd = jsonStr.lastIndexOf('}');
+
+            if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+              jsonStr = jsonStr.slice(jsonStart, jsonEnd + 1);
+            }
+
+            const result = JSON.parse(jsonStr);
+
+            console.log('[GenerateBranchName] Parsed result:', JSON.stringify(result, null, 2));
+
+            if (result.type === 'result' && result.subtype === 'success' && result.result) {
+              resolve({ success: true, branchName: result.result });
+            } else {
+              console.error('[GenerateBranchName] Unexpected result format:', result);
+              resolve({
+                success: false,
+                error: result.error || 'Unknown error',
+              });
+            }
+          } catch (err) {
+            console.error('[GenerateBranchName] Failed to parse stdout:', stdout);
+            console.error('[GenerateBranchName] Parse error:', err);
+            console.error('[GenerateBranchName] stderr:', stderr);
+            resolve({ success: false, error: 'Failed to parse response' });
+          }
+        });
+
+        proc.on('error', (err) => {
+          clearTimeout(timer);
+          resolve({ success: false, error: err.message });
+        });
+      });
+    }
+  );
+
   // Git Clone - Clone repository
   ipcMain.handle(
     IPC_CHANNELS.GIT_CLONE,

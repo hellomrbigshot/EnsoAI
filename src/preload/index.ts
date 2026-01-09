@@ -102,6 +102,11 @@ const electronAPI = {
       options: { maxDiffLines: number; timeout: number; model: string }
     ): Promise<{ success: boolean; message?: string; error?: string }> =>
       ipcRenderer.invoke(IPC_CHANNELS.GIT_GENERATE_COMMIT_MSG, workdir, options),
+    generateBranchName: (
+      workdir: string,
+      options: { prompt: string; model: string }
+    ): Promise<{ success: boolean; branchName?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GIT_GENERATE_BRANCH_NAME, workdir, options),
     startCodeReview: (
       workdir: string,
       options: {

@@ -4,7 +4,7 @@ import type {
   PullRequest,
   WorktreeCreateOptions,
 } from '@shared/types';
-import { AlertCircle, GitBranch, GitPullRequest, Loader2, Plus } from 'lucide-react';
+import { AlertCircle, GitBranch, GitPullRequest, Loader2, Plus, Sparkles } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,7 +66,7 @@ export function CreateWorktreeDialog({
   onOpenChange: controlledOnOpenChange,
 }: CreateWorktreeDialogProps) {
   const { t } = useI18n();
-  const { defaultWorktreePath } = useSettingsStore();
+  const { defaultWorktreePath, branchNameGenerator } = useSettingsStore();
 
   // Internal state (for uncontrolled mode)
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -88,6 +88,7 @@ export function CreateWorktreeDialog({
   const [baseBranch, setBaseBranch] = React.useState<string>('');
   const [newBranchName, setNewBranchName] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [generatingBranchName, setGeneratingBranchName] = React.useState(false);
 
   // PR mode state
   const [ghStatus, setGhStatus] = React.useState<GhCliStatus | null>(null);
@@ -291,6 +292,44 @@ export function CreateWorktreeDialog({
     setError(null);
   };
 
+  const handleGenerateBranchName = async () => {
+    if (!newBranchName.trim()) return;
+
+    setGeneratingBranchName(true);
+    try {
+      const trimmedDescription = newBranchName.trim();
+      const now = new Date();
+      const pad2 = (value: number) => String(value).padStart(2, '0');
+      const currentDate = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}`;
+      const currentTime = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(
+        now.getSeconds()
+      )}`;
+      const prompt = branchNameGenerator.prompt
+        .replaceAll('{description}', trimmedDescription)
+        .replaceAll('{current_date}', currentDate)
+        .replaceAll('{current_time}', currentTime);
+      const result = await window.electronAPI.git.generateBranchName(workdir, {
+        prompt,
+        model: branchNameGenerator.model,
+      });
+
+      if (result.success && result.branchName) {
+        setNewBranchName(result.branchName.trim());
+      } else {
+        const errorMessage =
+          result.error === 'timeout'
+            ? t('Generation timed out')
+            : result.error || t('Failed to generate branch name');
+        setError(errorMessage);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage || t('Failed to generate branch name'));
+    } finally {
+      setGeneratingBranchName(false);
+    }
+  };
+
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
@@ -346,12 +385,33 @@ export function CreateWorktreeDialog({
                 {/* New Branch Name */}
                 <Field>
                   <FieldLabel>{t('Branch name')}</FieldLabel>
-                  <Input
-                    value={newBranchName}
-                    onChange={(e) => setNewBranchName(e.target.value)}
-                    placeholder="feature/my-feature"
-                    autoFocus
-                  />
+                  <div className="relative w-full">
+                    <Input
+                      value={newBranchName}
+                      onChange={(e) => setNewBranchName(e.target.value)}
+                      placeholder="feature/my-feature"
+                      autoFocus
+                      className="pr-8"
+                    />
+                    {branchNameGenerator.enabled && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 p-1 hover:bg-transparent data-[pressed]:bg-transparent"
+                        onClick={handleGenerateBranchName}
+                        disabled={!newBranchName.trim() || generatingBranchName}
+                        title={t('Generate branch name')}
+                        aria-label={t('Generate branch name')}
+                      >
+                        {generatingBranchName ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   <FieldDescription>
                     {t('This branch will be created and checked out in the new worktree.')}
                   </FieldDescription>

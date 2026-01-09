@@ -21,6 +21,7 @@ export const IPC_CHANNELS = {
   GIT_COMMIT_DIFF: 'git:commit:diff',
   GIT_DIFF_STATS: 'git:diff:stats',
   GIT_GENERATE_COMMIT_MSG: 'git:generate-commit-msg',
+  GIT_GENERATE_BRANCH_NAME: 'git:generate-branch-name',
   GIT_CODE_REVIEW_START: 'git:code-review:start',
   GIT_CODE_REVIEW_STOP: 'git:code-review:stop',
   GIT_CODE_REVIEW_DATA: 'git:code-review:data',

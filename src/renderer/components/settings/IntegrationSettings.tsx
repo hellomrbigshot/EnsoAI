@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useI18n } from '@/i18n';
-import { useSettingsStore } from '@/stores/settings';
+import { defaultBranchNameGeneratorSettings, useSettingsStore } from '@/stores/settings';
 import { ProviderList } from './claude-provider';
 import { KeybindingInput } from './KeybindingsSettings';
 import { McpSection } from './mcp';
@@ -25,6 +25,8 @@ export function IntegrationSettings() {
     setCommitMessageGenerator,
     codeReview,
     setCodeReview,
+    branchNameGenerator,
+    setBranchNameGenerator,
   } = useSettingsStore();
   const [bridgePort, setBridgePort] = React.useState<number | null>(null);
 
@@ -533,6 +535,102 @@ export function IntegrationSettings() {
                 checked={codeReview.continueConversation ?? true}
                 onCheckedChange={(checked) => setCodeReview({ continueConversation: checked })}
               />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 border-t pt-6">
+        <div>
+          <h3 className="text-lg font-medium">{t('Branch Name Generator')}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t('Auto-generate branch names using Claude')}
+          </p>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-sm font-medium">{t('Enable Generator')}</span>
+            <p className="text-xs text-muted-foreground">
+              {t('Generate branch names with AI assistance')}
+            </p>
+          </div>
+          <Switch
+            checked={branchNameGenerator.enabled}
+            onCheckedChange={(checked) => setBranchNameGenerator({ enabled: checked })}
+          />
+        </div>
+
+        {branchNameGenerator.enabled && (
+          <div className="mt-4 space-y-4 border-t pt-4">
+            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+              <span className="text-sm font-medium">{t('Model')}</span>
+              <div className="space-y-1.5">
+                <Select
+                  value={branchNameGenerator.model ?? 'haiku'}
+                  onValueChange={(v) =>
+                    setBranchNameGenerator({
+                      model: v as 'default' | 'opus' | 'sonnet' | 'haiku',
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue>
+                      {(branchNameGenerator.model ?? 'haiku') === 'default'
+                        ? t('Default')
+                        : (branchNameGenerator.model ?? 'haiku').charAt(0).toUpperCase() +
+                          (branchNameGenerator.model ?? 'haiku').slice(1)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup>
+                    <SelectItem value="haiku">Haiku</SelectItem>
+                    <SelectItem value="sonnet">Sonnet</SelectItem>
+                    <SelectItem value="opus">Opus</SelectItem>
+                    <SelectItem value="default">{t('Default')}</SelectItem>
+                  </SelectPopup>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t('Claude model for generating branch names')}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-sm font-medium">{t('Prompt')}</span>
+              <div className="space-y-1.5">
+                <textarea
+                  value={branchNameGenerator.prompt}
+                  onChange={(e) => setBranchNameGenerator({ prompt: e.target.value })}
+                  className="w-full h-40 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder={t(
+                    'Enter a prompt template, and the AI will generate branch names according to your rules.\nAvailable variables:\n• {description} - Feature description\n• {current_date} - Current date\n• {current_time} - Current time'
+                  )}
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {t('Customize the AI prompt for generating branch names')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          t(
+                            'This will restore the default AI prompt for generating branch names. Your custom prompt will be lost.'
+                          )
+                        )
+                      ) {
+                        setBranchNameGenerator({
+                          prompt: defaultBranchNameGeneratorSettings.prompt,
+                        });
+                      }
+                    }}
+                    className="text-xs text-muted-foreground hover:text-primary underline"
+                  >
+                    {t('Restore default prompt')}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
