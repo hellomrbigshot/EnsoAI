@@ -11,8 +11,8 @@ import {
   registerIpcHandlers,
 } from './ipc';
 import { initClaudeProviderWatcher } from './ipc/claudeProvider';
-import { unwatchClaudeSettings } from './services/claude/ClaudeProviderManager';
 import { registerClaudeBridgeIpcHandlers } from './services/claude/ClaudeIdeBridge';
+import { unwatchClaudeSettings } from './services/claude/ClaudeProviderManager';
 import { checkGitInstalled } from './services/git/checkGit';
 import { setCurrentLocale } from './services/i18n';
 import { buildAppMenu } from './services/MenuBuilder';

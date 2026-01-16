@@ -1,6 +1,6 @@
 import type { ClaudeProvider } from '@shared/types';
 import { IPC_CHANNELS } from '@shared/types';
-import { ipcMain, BrowserWindow } from 'electron';
+import { type BrowserWindow, ipcMain } from 'electron';
 import {
   applyProvider,
   extractProviderFromSettings,

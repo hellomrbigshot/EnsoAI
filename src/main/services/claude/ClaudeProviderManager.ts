@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BrowserWindow } from 'electron';
 import type { ClaudeProvider, ClaudeSettings } from '@shared/types';
 import { IPC_CHANNELS } from '@shared/types';
+import type { BrowserWindow } from 'electron';
 
 function getClaudeConfigDir(): string {
   if (process.env.CLAUDE_CONFIG_DIR) {
