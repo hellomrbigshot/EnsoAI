@@ -7,7 +7,7 @@ import {
 import { useTerminalScrollToBottom } from '@/hooks/useTerminalScrollToBottom';
 import { useXterm } from '@/hooks/useXterm';
 import { useI18n } from '@/i18n';
-import { useAgentSessionsStore, type OutputState } from '@/stores/agentSessions';
+import { type OutputState, useAgentSessionsStore } from '@/stores/agentSessions';
 import { useSettingsStore } from '@/stores/settings';
 import { useTerminalWriteStore } from '@/stores/terminalWrite';
 
@@ -386,12 +386,10 @@ export function AgentTerminal({
         pendingIdleMonitorRef.current = false;
       }
 
-      // Skip if notification disabled, not waiting for idle, or Stop hook is enabled (Stop hook is more precise)
-      if (
-        !agentNotificationEnabled ||
-        !isWaitingForIdleRef.current ||
-        claudeCodeIntegration.stopHookEnabled
-      )
+      const stopHookEnabledForSession =
+        claudeCodeIntegration.stopHookEnabled && agentCommand.startsWith('claude');
+
+      if (!agentNotificationEnabled || !isWaitingForIdleRef.current || stopHookEnabledForSession)
         return;
 
       // Clear existing idle timer
