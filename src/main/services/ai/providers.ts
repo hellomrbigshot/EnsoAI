@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import type {
   AIProvider,
   ClaudeModelId,
@@ -8,7 +8,7 @@ import type {
   ModelId,
   ReasoningEffort,
 } from '@shared/types';
-import { getEnvForCommand, getShellForCommand, killProcessTree } from '../../utils/shell';
+import { getEnvForCommand, getShellForCommand } from '../../utils/shell';
 
 export type { AIProvider, ModelId, ReasoningEffort } from '@shared/types';
 
@@ -104,6 +104,7 @@ export function spawnCLI(options: CLISpawnOptions): CLISpawnResult {
     cwd: options.cwd,
     env: env as NodeJS.ProcessEnv,
     stdio: ['pipe', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32', // Create new process group on Unix
   });
 
   // Handle stdin errors to prevent EPIPE crashes
@@ -119,7 +120,20 @@ export function spawnCLI(options: CLISpawnOptions): CLISpawnResult {
 
   return {
     proc,
-    kill: () => killProcessTree(proc),
+    kill: () => {
+      if (!proc.pid) return;
+      try {
+        if (process.platform === 'win32') {
+          // Windows: use taskkill to kill process tree
+          spawnSync('taskkill', ['/pid', String(proc.pid), '/t', '/f'], { stdio: 'ignore' });
+        } else {
+          // Unix: kill the entire process group (negative PID)
+          process.kill(-proc.pid, 'SIGKILL');
+        }
+      } catch {
+        // Process may have already exited
+      }
+    },
   };
 }
 

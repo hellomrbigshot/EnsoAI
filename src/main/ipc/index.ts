@@ -1,3 +1,4 @@
+import { stopAllCodeReviews } from '../services/ai';
 import { disposeClaudeIdeBridge } from '../services/claude/ClaudeIdeBridge';
 import { autoUpdaterService } from '../services/updater/AutoUpdater';
 import { registerAgentHandlers } from './agent';
@@ -49,6 +50,9 @@ export async function cleanupAllResources(): Promise<void> {
   // Stop Hapi server first (sync, fast)
   cleanupHapi();
 
+  // Stop all code review processes (sync, fast)
+  stopAllCodeReviews();
+
   // Destroy all PTY sessions and wait for them to exit
   // This prevents crashes when PTY exit callbacks fire during Node cleanup
   try {
@@ -99,6 +103,9 @@ export function cleanupAllResourcesSync(): void {
 
   // Kill all PTY sessions immediately (sync)
   destroyAllTerminals();
+
+  // Stop all code review processes (sync)
+  stopAllCodeReviews();
 
   // Stop file watchers (sync)
   stopAllFileWatchersSync();

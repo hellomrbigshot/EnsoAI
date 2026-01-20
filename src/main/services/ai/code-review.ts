@@ -317,7 +317,12 @@ export async function startCodeReview(options: CodeReviewOptions): Promise<void>
   });
 
   proc.on('close', (code) => {
-    activeReviews.delete(reviewId);
+    const review = activeReviews.get(reviewId);
+    if (review) {
+      // Kill the entire process tree to clean up any child processes (e.g., MCP servers)
+      review.kill();
+      activeReviews.delete(reviewId);
+    }
 
     if (code !== 0) {
       onError(`Process exited with code ${code}`);
@@ -336,7 +341,11 @@ export async function startCodeReview(options: CodeReviewOptions): Promise<void>
   });
 
   proc.on('error', (err) => {
-    activeReviews.delete(reviewId);
+    const review = activeReviews.get(reviewId);
+    if (review) {
+      review.kill();
+      activeReviews.delete(reviewId);
+    }
     console.error(`[code-review] Process error:`, err);
     onError(err.message);
   });
@@ -345,6 +354,13 @@ export async function startCodeReview(options: CodeReviewOptions): Promise<void>
 export function stopCodeReview(reviewId: string): void {
   const review = activeReviews.get(reviewId);
   if (review) {
+    review.kill();
+    activeReviews.delete(reviewId);
+  }
+}
+
+export function stopAllCodeReviews(): void {
+  for (const [reviewId, review] of activeReviews) {
     review.kill();
     activeReviews.delete(reviewId);
   }
