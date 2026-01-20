@@ -51,6 +51,25 @@ files:
   - "!node_modules/@anthropic-ai/claude-agent-sdk/vendor/**"
   - "!node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
   - "!node_modules/@anthropic-ai/claude-agent-sdk/*.wasm"
+  # Cloudflared: ~38MB pre-downloaded binary (we download at runtime to userData/bin)
+  - "!node_modules/cloudflared/bin/**"
+  # Mermaid and its heavy dependencies (~60MB total) - loaded from CDN at runtime
+  - "!node_modules/mermaid/**"
+  - "!node_modules/@mermaid-js/**"
+  - "!node_modules/cytoscape/**"
+  - "!node_modules/cytoscape-*/**"
+  - "!node_modules/@chevrotain/**"
+  - "!node_modules/chevrotain/**"
+  - "!node_modules/langium/**"
+  - "!node_modules/katex/**"
+  - "!node_modules/lodash-es/**"
+  - "!node_modules/d3/**"
+  - "!node_modules/d3-*/**"
+  - "!node_modules/dagre-d3-es/**"
+  - "!node_modules/elkjs/**"
+  - "!node_modules/web-tree-sitter/**"
+  - "!node_modules/khroma/**"
+  - "!node_modules/dompurify/**"
 
 asar: true
 asarUnpack:

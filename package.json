@@ -54,7 +54,6 @@
     "iconv-lite": "^0.7.1",
     "jschardet": "^3.1.4",
     "lucide-react": "^0.562.0",
-    "mermaid": "^11.12.2",
     "monaco-editor": "^0.55.1",
     "node-pty": "^1.1.0",
     "pidtree": "^0.6.0",
