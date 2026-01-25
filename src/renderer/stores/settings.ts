@@ -487,6 +487,7 @@ interface SettingsState {
   terminalTheme: string;
   terminalRenderer: TerminalRenderer;
   terminalScrollback: number;
+  terminalOptionIsMeta: boolean;
   xtermKeybindings: XtermKeybindings;
   mainTabKeybindings: MainTabKeybindings;
   sourceControlKeybindings: SourceControlKeybindings;
@@ -529,6 +530,7 @@ interface SettingsState {
   setTerminalTheme: (theme: string) => void;
   setTerminalRenderer: (renderer: TerminalRenderer) => void;
   setTerminalScrollback: (scrollback: number) => void;
+  setTerminalOptionIsMeta: (enabled: boolean) => void;
   setXtermKeybindings: (keybindings: XtermKeybindings) => void;
   setMainTabKeybindings: (keybindings: MainTabKeybindings) => void;
   setSourceControlKeybindings: (keybindings: SourceControlKeybindings) => void;
@@ -609,6 +611,7 @@ export const useSettingsStore = create<SettingsState>()(
       terminalTheme: 'Dracula',
       terminalRenderer: 'dom',
       terminalScrollback: 10000,
+      terminalOptionIsMeta: true,
       xtermKeybindings: defaultXtermKeybindings,
       mainTabKeybindings: defaultMainTabKeybindings,
       sourceControlKeybindings: defaultSourceControlKeybindings,
@@ -679,6 +682,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setTerminalRenderer: (terminalRenderer) => set({ terminalRenderer }),
       setTerminalScrollback: (terminalScrollback) => set({ terminalScrollback }),
+      setTerminalOptionIsMeta: (terminalOptionIsMeta) => set({ terminalOptionIsMeta }),
       setXtermKeybindings: (xtermKeybindings) => set({ xtermKeybindings }),
       setMainTabKeybindings: (mainTabKeybindings) => set({ mainTabKeybindings }),
       setSourceControlKeybindings: (sourceControlKeybindings) => set({ sourceControlKeybindings }),
