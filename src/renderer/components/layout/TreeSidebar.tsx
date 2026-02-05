@@ -14,6 +14,7 @@ import {
   FolderOpen,
   GitBranch,
   GitMerge,
+  List,
   PanelLeftClose,
   Plus,
   RefreshCw,
@@ -32,6 +33,12 @@ import {
   type TabId,
   TEMP_REPO_ID,
 } from '@/App/constants';
+import {
+  DEFAULT_REPOSITORY_SETTINGS,
+  getStoredRepositorySettings,
+  normalizePath,
+  type RepositorySettings,
+} from '@/App/storage';
 import { GitSyncButton } from '@/components/git/GitSyncButton';
 import {
   CreateGroupDialog,
@@ -39,6 +46,7 @@ import {
   GroupSelector,
   MoveToGroupSubmenu,
 } from '@/components/group';
+import { RepositoryManagerDialog } from '@/components/repository/RepositoryManagerDialog';
 import { RepositorySettingsDialog } from '@/components/repository/RepositorySettingsDialog';
 import { TempWorkspaceContextMenu } from '@/components/temp-workspace/TempWorkspaceContextMenu';
 import {
@@ -212,6 +220,20 @@ export function TreeSidebar({
   // Repository settings dialog
   const [repoSettingsOpen, setRepoSettingsOpen] = useState(false);
   const [repoSettingsTarget, setRepoSettingsTarget] = useState<Repository | null>(null);
+
+  // Repository manager dialog
+  const [repoManagerOpen, setRepoManagerOpen] = useState(false);
+
+  // Cached repository settings to avoid repeated localStorage reads
+  const [repoSettingsMap, setRepoSettingsMap] = useState<Record<string, RepositorySettings>>(
+    getStoredRepositorySettings
+  );
+  const refreshRepoSettings = useCallback(() => {
+    setRepoSettingsMap(getStoredRepositorySettings());
+  }, []);
+  useEffect(() => {
+    refreshRepoSettings();
+  }, [refreshRepoSettings]);
 
   // Create worktree dialog (triggered from context menu)
   const [createWorktreeDialogOpen, setCreateWorktreeDialogOpen] = useState(false);
@@ -475,6 +497,12 @@ export function TreeSidebar({
   const filteredRepos = useMemo(() => {
     let filtered = repositories;
 
+    // Filter hidden repositories using cached settings
+    filtered = filtered.filter((repo) => {
+      const settings = repoSettingsMap[normalizePath(repo.path)] || DEFAULT_REPOSITORY_SETTINGS;
+      return !settings.hidden;
+    });
+
     if (activeGroupId !== ALL_GROUP_ID) {
       filtered = filtered.filter((r) => r.groupId === activeGroupId);
     }
@@ -491,7 +519,7 @@ export function TreeSidebar({
     }
 
     return filtered;
-  }, [repositories, worktreesMap, searchQuery, activeGroupId]);
+  }, [repositories, worktreesMap, searchQuery, activeGroupId, repoSettingsMap]);
 
   // Filter worktrees for a specific repo
   const getFilteredWorktrees = useCallback(
@@ -516,6 +544,15 @@ export function TreeSidebar({
       {/* Header */}
       <div className="flex h-12 items-center justify-end gap-1 border-b px-3 drag-region">
         <div className="flex items-center gap-1">
+          {/* Manage repositories button */}
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-md no-drag text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+            onClick={() => setRepoManagerOpen(true)}
+            title={t('Manage Repositories')}
+          >
+            <List className="h-4 w-4" />
+          </button>
           {/* Refresh button */}
           <button
             type="button"
@@ -1202,6 +1239,16 @@ export function TreeSidebar({
         />
       )}
 
+      {/* Repository Manager Dialog */}
+      <RepositoryManagerDialog
+        open={repoManagerOpen}
+        onOpenChange={setRepoManagerOpen}
+        repositories={repositories}
+        onSelectRepo={onSelectRepo}
+        onRemoveRepository={onRemoveRepository}
+        onSettingsChange={refreshRepoSettings}
+      />
+
       <CreateGroupDialog
         open={createGroupDialogOpen}
         onOpenChange={setCreateGroupDialogOpen}
@@ -1324,7 +1371,6 @@ interface WorktreeTreeItemProps {
 
 function WorktreeTreeItem({
   worktree,
-  repoPath,
   isActive,
   onClick,
   onDelete,
