@@ -424,6 +424,10 @@ export const zhTranslations: Record<string, string> = {
   'Worktree search placeholder': '搜索 worktree...',
   'Toggle Worktree': '折叠/展开 Worktree',
   'Toggle Repository': '折叠/展开 Repository',
+  'Tmux Session': 'Tmux 会话',
+  'Wrap Claude agent in tmux for session persistence and recovery':
+    '将 Claude agent 包装在 tmux 中以实现会话持久化与恢复',
+  'tmux is not installed. Please install tmux first.': 'tmux 未安装，请先安装 tmux。',
   'Yes, remove': '移除',
   'You have {{count}} changed files': '{{count}} 个文件已更改',
   'You have no worktrees yet': '暂无 Worktree',
