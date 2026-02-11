@@ -17,6 +17,7 @@ import {
   clearTerminalThemeFromApp,
   isTerminalThemeDark,
 } from '@/lib/ghosttyTheme';
+import { updateRendererLogging } from '@/utils/logging';
 
 // Custom storage using Electron IPC to persist settings to JSON file
 const electronStorage = {
@@ -617,6 +618,10 @@ interface SettingsState {
   hideGroups: boolean;
   // Copy on Selection
   copyOnSelection: boolean;
+  // Logging
+  loggingEnabled: boolean;
+  logLevel: 'error' | 'warn' | 'info' | 'debug';
+  logRetentionDays: number; // How many days to keep log files (1-30)
 
   setTheme: (theme: Theme) => void;
   setLayoutMode: (mode: LayoutMode) => void;
@@ -720,6 +725,10 @@ interface SettingsState {
   setHideGroups: (hide: boolean) => void;
   // Copy on Selection
   setCopyOnSelection: (enabled: boolean) => void;
+  // Logging
+  setLoggingEnabled: (enabled: boolean) => void;
+  setLogLevel: (level: 'error' | 'warn' | 'info' | 'debug') => void;
+  setLogRetentionDays: (days: number) => void;
 }
 
 const defaultAgentSettings: AgentSettings = {
@@ -819,6 +828,10 @@ export const useSettingsStore = create<SettingsState>()(
       hideGroups: false,
       // Copy on Selection default
       copyOnSelection: false,
+      // Logging defaults
+      loggingEnabled: false,
+      logLevel: 'info',
+      logRetentionDays: 7, // Keep logs for 7 days by default
 
       setTheme: (theme) => {
         const terminalTheme = get().terminalTheme;
@@ -1195,6 +1208,26 @@ export const useSettingsStore = create<SettingsState>()(
       setHideGroups: (hideGroups) => set({ hideGroups }),
       // Copy on Selection
       setCopyOnSelection: (copyOnSelection) => set({ copyOnSelection }),
+      // Logging
+      setLoggingEnabled: (loggingEnabled) => {
+        const { logLevel } = get();
+        set({ loggingEnabled });
+        // Update both main process and renderer IPC transport level
+        window.electronAPI.log.updateConfig({ enabled: loggingEnabled, level: logLevel });
+        updateRendererLogging(loggingEnabled, logLevel);
+      },
+      setLogLevel: (logLevel) => {
+        const { loggingEnabled } = get();
+        set({ logLevel });
+        // Update both main process and renderer IPC transport level
+        window.electronAPI.log.updateConfig({ enabled: loggingEnabled, level: logLevel });
+        updateRendererLogging(loggingEnabled, logLevel);
+      },
+      setLogRetentionDays: (logRetentionDays) => {
+        // Clamp value between 1 and 30 days
+        const clampedDays = Math.min(30, Math.max(1, Math.floor(logRetentionDays)));
+        set({ logRetentionDays: clampedDays });
+      },
     }),
     {
       name: 'enso-settings',
@@ -1471,6 +1504,9 @@ export const useSettingsStore = create<SettingsState>()(
       onRehydrateStorage: () => (state) => {
         const effectiveState = state ?? useSettingsStore.getState();
         applyInitialSettings(effectiveState);
+
+        // Sync renderer logging configuration after settings are loaded
+        updateRendererLogging(effectiveState.loggingEnabled, effectiveState.logLevel);
 
         // 监听系统主题变化，当用户选择"跟随系统"时自动切换
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
