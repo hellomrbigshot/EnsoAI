@@ -4,6 +4,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { type FileEntry, type FileReadResult, IPC_CHANNELS } from '@shared/types';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import iconv from 'iconv-lite';
+import { isBinaryFile } from 'isbinaryfile';
 import jschardet from 'jschardet';
 import simpleGit from 'simple-git';
 import { FileWatcher } from '../services/files/FileWatcher';
@@ -127,6 +128,35 @@ export function registerFileHandlers(): void {
   );
 
   ipcMain.handle(IPC_CHANNELS.FILE_READ, async (_, filePath: string): Promise<FileReadResult> => {
+    // Design Decision: Binary File Detection
+    // ----------------------------------------
+    // We detect binary files BEFORE reading the full content to avoid:
+    // 1. Loading large binary files (videos, executables) into memory
+    // 2. Performance issues from decoding binary content as text
+    // 3. Monaco editor freezing when rendering binary garbage
+    //
+    // The isbinaryfile library only reads the first 512 bytes for detection.
+    // If detection fails, we fall back to treating it as a text file.
+    // The renderer decides whether to show "unsupported" message based on
+    // file extension (images/PDFs have dedicated preview components).
+    let isBinary = false;
+    try {
+      isBinary = await isBinaryFile(filePath);
+    } catch {
+      // If binary detection fails, assume it's a text file and continue
+    }
+
+    if (isBinary) {
+      return {
+        content: '',
+        encoding: 'binary',
+        detectedEncoding: 'binary',
+        confidence: 1,
+        isBinary: true,
+      };
+    }
+
+    // Only read full file content for non-binary files
     const buffer = await readFile(filePath);
     const { encoding: detectedEncoding, confidence } = detectEncoding(buffer);
 

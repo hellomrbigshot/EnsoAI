@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import { isUnsupportedBinaryFile } from '@/components/files/fileIcons';
 import { useEditorStore } from '@/stores/editor';
 
 export function useEditor() {
@@ -25,9 +26,15 @@ export function useEditor() {
 
   const loadFile = useMutation({
     mutationFn: async (path: string) => {
-      const { content, encoding } = await window.electronAPI.file.read(path);
-      openFile({ path, content, encoding, isDirty: false });
-      return { content, encoding };
+      const { content, encoding, isBinary } = await window.electronAPI.file.read(path);
+      openFile({
+        path,
+        content,
+        encoding,
+        isDirty: false,
+        isUnsupported: isUnsupportedBinaryFile(path, isBinary),
+      });
+      return { content, encoding, isBinary };
     },
   });
 
@@ -60,8 +67,14 @@ export function useEditor() {
         setActiveFile(path);
       } else {
         try {
-          const { content, encoding } = await window.electronAPI.file.read(path);
-          openFile({ path, content, encoding, isDirty: false });
+          const { content, encoding, isBinary } = await window.electronAPI.file.read(path);
+          openFile({
+            path,
+            content,
+            encoding,
+            isDirty: false,
+            isUnsupported: isUnsupportedBinaryFile(path, isBinary),
+          });
         } catch {
           return;
         }
