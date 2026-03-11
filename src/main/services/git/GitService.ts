@@ -1471,11 +1471,20 @@ export class GitService {
    * Get blame info for all lines of a file using `git blame --porcelain`.
    */
   async blame(filePath: string): Promise<GitBlameLineInfo[]> {
+    const BLAME_TIMEOUT_MS = 30000; // 30 second timeout for git blame
+
     return new Promise((resolve, reject) => {
       const proc = spawnGit(this.workdir, ['blame', '--porcelain', '--', filePath]);
 
       let stdout = '';
       let stderr = '';
+      let timedOut = false;
+
+      const timeoutTimer = setTimeout(() => {
+        timedOut = true;
+        proc.kill('SIGKILL');
+        reject(new Error(`git blame timed out after ${BLAME_TIMEOUT_MS}ms`));
+      }, BLAME_TIMEOUT_MS);
 
       proc.stdout.on('data', (data: Buffer) => {
         stdout += data.toString('utf-8');
@@ -1486,6 +1495,9 @@ export class GitService {
       });
 
       proc.on('close', (code) => {
+        clearTimeout(timeoutTimer);
+        if (timedOut) return;
+
         if (code !== 0) {
           reject(new Error(`git blame failed: ${stderr.trim()}`));
           return;
@@ -1499,7 +1511,11 @@ export class GitService {
         }
       });
 
-      proc.on('error', reject);
+      proc.on('error', (err) => {
+        clearTimeout(timeoutTimer);
+        if (timedOut) return;
+        reject(err);
+      });
     });
   }
 

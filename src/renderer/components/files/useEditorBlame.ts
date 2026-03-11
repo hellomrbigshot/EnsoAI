@@ -11,8 +11,8 @@ const MS_PER_DAY = 86400000;
 const MS_PER_MONTH = 2592000000; // 30 days
 const MS_PER_YEAR = 31536000000; // 365 days
 const CURSOR_DEBOUNCE_MS = 150;
-const CONTENT_CHANGE_DEBOUNCE_MS = 1000; // Debounce for re-fetching blame after edit
-const MAX_CACHE_SIZE = 20; // Maximum number of files to cache blame data for
+const CACHE_INVALIDATE_DELAY_MS = 1000;
+const MAX_CACHE_SIZE = 20;
 
 // Global style element ID (shared across all editor instances)
 const GLOBAL_BLAME_STYLE_ID = 'git-blame-inline-styles-global';
@@ -62,7 +62,10 @@ export function useEditorBlame({
   rootPath,
   enabled,
   t,
-}: UseEditorBlameOptions): void {
+}: UseEditorBlameOptions): { refreshBlame: () => void } {
+  // Ref to store the latest refreshBlame function
+  const refreshBlameRef = useRef<(() => void) | null>(null);
+
   // Consolidated state refs
   const stateRef = useRef<{
     cache: Map<string, Map<number, GitBlameLineInfo>>;
@@ -86,6 +89,7 @@ export function useEditorBlame({
         stateRef.current.decorations = editor.deltaDecorations(stateRef.current.decorations, []);
       }
       stateRef.current.currentLine = null;
+      refreshBlameRef.current = null;
       return;
     }
 
@@ -93,7 +97,7 @@ export function useEditorBlame({
     const editorDom = editor.getDomNode();
     if (!editorDom) return;
 
-    // Create or reference global style element (shared across all editor instances)
+    // Create or reference global style element
     if (!document.getElementById(GLOBAL_BLAME_STYLE_ID)) {
       const styleElement = document.createElement('style');
       styleElement.id = GLOBAL_BLAME_STYLE_ID;
@@ -113,14 +117,13 @@ export function useEditorBlame({
     globalStyleElementRefCount++;
 
     let disposed = false;
-    let decorationCleared = false; // Flag to avoid redundant clearDeco calls
+    let decorationCleared = false;
 
     const clearDeco = (): void => {
       if (stateRef.current.decorations.length > 0) {
         stateRef.current.decorations = editor.deltaDecorations(stateRef.current.decorations, []);
       }
       stateRef.current.currentLine = null;
-      // Reset CSS variable on editor DOM node (not global)
       editorDom.style.setProperty('--git-blame-content', "''");
     };
 
@@ -130,6 +133,7 @@ export function useEditorBlame({
       const lineData = stateRef.current.cache.get(filePath);
       if (!lineData) {
         clearDeco();
+        fetchAndShow();
         return;
       }
 
@@ -146,7 +150,6 @@ export function useEditorBlame({
       const shortHash = info.hash.slice(0, 7);
       const blameText = `  ${info.author}, ${timeAgo} · ${info.message} (${shortHash})`;
 
-      // Update CSS variable on editor DOM node (scoped to this editor instance)
       const escaped = escapeCssString(blameText);
       editorDom.style.setProperty('--git-blame-content', `'${escaped}'`);
 
@@ -194,9 +197,8 @@ export function useEditorBlame({
           lineMap.set(entry.lineNumber, entry);
         }
 
-        // Implement LRU cache with size limit
+        // LRU cache with size limit
         if (stateRef.current.cache.size >= MAX_CACHE_SIZE) {
-          // Remove the oldest entry (first key in Map)
           const firstKey = stateRef.current.cache.keys().next().value;
           if (firstKey) {
             stateRef.current.cache.delete(firstKey);
@@ -215,6 +217,12 @@ export function useEditorBlame({
       }
     };
 
+    // Store refresh function in ref for external access
+    refreshBlameRef.current = (): void => {
+      // Re-fetch blame after file save
+      fetchAndShow();
+    };
+
     fetchAndShow();
 
     const cursorDisposable = editor.onDidChangeCursorPosition((e) => {
@@ -222,7 +230,6 @@ export function useEditorBlame({
         clearTimeout(stateRef.current.debounceTimer);
       }
       stateRef.current.debounceTimer = setTimeout(() => {
-        // Use requestAnimationFrame for smoother cursor movement
         requestAnimationFrame(() => {
           showBlameForLine(e.position.lineNumber);
         });
@@ -231,26 +238,22 @@ export function useEditorBlame({
 
     const blurDisposable = editor.onDidBlurEditorText(() => {
       clearDeco();
-      decorationCleared = false; // Reset flag for next edit
+      decorationCleared = false;
     });
 
     const modelDisposable = editor.onDidChangeModelContent(() => {
-      // Clear decoration only once per edit session (not on every keystroke)
       if (!decorationCleared) {
         clearDeco();
         decorationCleared = true;
       }
 
-      // Debounce re-fetch to avoid excessive git calls during editing
       if (stateRef.current.contentChangeTimer) {
         clearTimeout(stateRef.current.contentChangeTimer);
       }
       stateRef.current.contentChangeTimer = setTimeout(() => {
-        // Invalidate cache and re-fetch to get updated blame info
         stateRef.current.cache.delete(filePath);
-        fetchAndShow();
-        decorationCleared = false; // Reset flag after re-fetch
-      }, CONTENT_CHANGE_DEBOUNCE_MS);
+        decorationCleared = false;
+      }, CACHE_INVALIDATE_DELAY_MS);
     });
 
     return () => {
@@ -267,11 +270,9 @@ export function useEditorBlame({
         stateRef.current.contentChangeTimer = null;
       }
       clearDeco();
-
-      // Clear cache for this file to free memory
       stateRef.current.cache.delete(filePath);
+      refreshBlameRef.current = null;
 
-      // Cleanup global style element reference
       globalStyleElementRefCount--;
       if (globalStyleElementRefCount <= 0) {
         const styleEl = document.getElementById(GLOBAL_BLAME_STYLE_ID);
@@ -282,4 +283,9 @@ export function useEditorBlame({
       }
     };
   }, [editor, monacoInstance, filePath, rootPath, enabled, t]);
+
+  // Return stable object with refresh function
+  return {
+    refreshBlame: () => refreshBlameRef.current?.(),
+  };
 }

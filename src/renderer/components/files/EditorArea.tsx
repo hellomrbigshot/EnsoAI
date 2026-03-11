@@ -241,7 +241,7 @@ export const EditorArea = forwardRef<EditorAreaRef, EditorAreaProps>(function Ed
   });
 
   // Inline git blame
-  useEditorBlame({
+  const { refreshBlame } = useEditorBlame({
     editor: editorInstance,
     monacoInstance: monacoInstance,
     filePath: activeTabPath,
@@ -249,6 +249,18 @@ export const EditorArea = forwardRef<EditorAreaRef, EditorAreaProps>(function Ed
     enabled: editorReady && editorSettings.gitBlameEnabled,
     t,
   });
+
+  // Wrap onSave to refresh blame after save
+  const handleSaveWithBlameRefresh = useCallback(
+    (path: string) => {
+      onSave(path);
+      // Refresh blame after file is saved
+      if (path === activeTabPath) {
+        refreshBlame();
+      }
+    },
+    [onSave, activeTabPath, refreshBlame]
+  );
 
   // Calculate breadcrumb segments from active file path
   const breadcrumbSegments = useMemo(() => {
