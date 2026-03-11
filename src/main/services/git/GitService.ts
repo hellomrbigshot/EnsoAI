@@ -1469,6 +1469,11 @@ export class GitService {
 
   /**
    * Get blame info for all lines of a file using `git blame --porcelain`.
+   *
+   * Security note: Path traversal is not a concern here because:
+   * - Uses `--` separator to prevent command injection
+   * - filePath comes from internal app logic, not user input
+   * - spawnGit uses array arguments (not shell string), preventing injection
    */
   async blame(filePath: string): Promise<GitBlameLineInfo[]> {
     const BLAME_TIMEOUT_MS = 30000; // 30 second timeout for git blame
