@@ -288,6 +288,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
+          # Ensure draft release exists (may not yet be created by electron-builder)
+          gh release create "$TAG" --draft --title "$TAG" --notes "" 2>/dev/null || true
           gh release upload "$TAG" dist/remote-runtime/* --clobber
 
   generate-release-notes:
